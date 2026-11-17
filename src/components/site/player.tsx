@@ -8,11 +8,20 @@ import {
   Film,
   Info,
   Play,
+  Shield,
+  ShieldAlert,
   ShieldCheck,
   Tv,
 } from "lucide-react";
 import type { MovieSource } from "@/lib/types";
-import { cn, externalUrl, normalizeEmbedUrl, youtubeEmbed } from "@/lib/utils";
+import {
+  cn,
+  externalUrl,
+  isSandboxIncompatibleHost,
+  isSandboxSafeHost,
+  normalizeEmbedUrl,
+  youtubeEmbed,
+} from "@/lib/utils";
 
 interface PlayerProps {
   slug: string;
@@ -130,25 +139,73 @@ function NativePlayer({
   return <div ref={containerRef} className="h-full w-full" />;
 }
 
+type ShieldMode = "auto" | "strict" | "compatible";
+
 interface EmbedFrameProps {
   source: MovieSource;
+  shieldMode: ShieldMode;
   onLoaded: () => void;
+  onBlockedPopup: () => void;
 }
 
-function EmbedFrame({ source, onLoaded }: EmbedFrameProps) {
+function EmbedFrame({
+  source,
+  shieldMode,
+  onLoaded,
+  onBlockedPopup,
+}: EmbedFrameProps) {
   const url =
     source.type === "youtube"
       ? youtubeEmbed(source.url)
       : normalizeEmbedUrl(source.url);
 
+  const canSandbox = source.type === "youtube" || isSandboxSafeHost(url);
+  const useStrictSandbox =
+    shieldMode === "strict" || (shieldMode === "auto" && canSandbox);
+
+  useEffect(() => {
+    const originalOpen = window.open;
+    const blockedOpen: typeof window.open = () => {
+      onBlockedPopup();
+      return null;
+    };
+
+    window.open = blockedOpen;
+
+    const handleBlur = () => {
+      if (document.activeElement?.tagName === "IFRAME") {
+        window.setTimeout(() => {
+          try {
+            window.focus();
+          } catch {
+            // ignore
+          }
+        }, 10);
+      }
+    };
+
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      window.open = originalOpen;
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, [onBlockedPopup]);
+
   return (
     <iframe
+      key={`${url}-${useStrictSandbox ? "sandboxed" : "compatible"}`}
       src={url}
       title={source.label}
       className="h-full w-full border-0"
+      sandbox={
+        useStrictSandbox
+          ? "allow-scripts allow-same-origin allow-forms allow-presentation"
+          : undefined
+      }
       allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer"
       allowFullScreen
-      referrerPolicy="strict-origin-when-cross-origin"
+      referrerPolicy="origin"
       onLoad={onLoaded}
     />
   );
@@ -163,17 +220,60 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
   const [loading, setLoading] = useState(
     Boolean(initialSource && initialSource.type !== "external"),
   );
+  const [shieldMode, setShieldMode] = useState<ShieldMode>("auto");
+  const [blockedPopups, setBlockedPopups] = useState(0);
   const tracked = useRef(false);
   const handleLoading = useCallback(
     (value: boolean) => setLoading(value),
     [],
   );
+  const handleBlockedPopup = useCallback(() => {
+    setBlockedPopups((prev) => prev + 1);
+  }, []);
 
   const active =
     sources.find((source) => source.id === activeId) ||
     playable[0] ||
     sources[0] ||
     null;
+
+  const activeNormalizedUrl = active
+    ? active.type === "youtube"
+      ? youtubeEmbed(active.url)
+      : normalizeEmbedUrl(active.url)
+    : "";
+  const activeRejectsSandbox =
+    Boolean(active) &&
+    active?.type !== "youtube" &&
+    isSandboxIncompatibleHost(activeNormalizedUrl);
+
+  const effectiveShieldMode =
+    activeRejectsSandbox && shieldMode === "strict"
+      ? "compatible"
+      : shieldMode;
+
+  const isStrictSandboxed =
+    Boolean(active) &&
+    (active?.type === "hls" ||
+      active?.type === "mp4" ||
+      effectiveShieldMode === "strict" ||
+      (effectiveShieldMode === "auto" &&
+        (active?.type === "youtube" ||
+          isSandboxSafeHost(activeNormalizedUrl))));
+
+  const cycleShieldMode = () => {
+    setShieldMode((current) => {
+      if (activeRejectsSandbox) {
+        return current === "compatible" ? "auto" : "compatible";
+      }
+      if (current === "auto") return "strict";
+      if (current === "strict") return "compatible";
+      return "auto";
+    });
+    if (active && active.type !== "external") {
+      setLoading(true);
+    }
+  };
 
   const track = () => {
     if (tracked.current) return;
@@ -186,7 +286,7 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
   };
 
   return (
-    <div className="overflow-hidden rounded-[26px] border border-white/10 bg-black shadow-[0_40px_120px_-40px_rgba(0,0,0,0.95)]">
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_40px_120px_-40px_rgba(0,0,0,0.95)] sm:rounded-[26px]">
       <div className="relative aspect-video w-full bg-black">
         {!active ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
@@ -230,7 +330,12 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
           </div>
         ) : active.type === "embed" || active.type === "youtube" ? (
           <div onClick={track} className="h-full w-full">
-            <EmbedFrame source={active} onLoaded={() => setLoading(false)} />
+            <EmbedFrame
+              source={active}
+              shieldMode={effectiveShieldMode}
+              onLoaded={() => setLoading(false)}
+              onBlockedPopup={handleBlockedPopup}
+            />
           </div>
         ) : (
           <div onClick={track} className="h-full w-full">
@@ -271,14 +376,51 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
               {sources.length}
             </span>
           </div>
-          <p className="flex items-center gap-1.5 text-[11px] text-white/35">
-            <ShieldCheck size={13} className="text-emerald-400/70" />
-            Try another source if playback stalls.
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {active && (active.type === "embed" || active.type === "youtube") ? (
+              <button
+                type="button"
+                onClick={cycleShieldMode}
+                title="Click to switch Popup Shield mode (Auto / Strict Sandbox / Compatible)"
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition",
+                  isStrictSandboxed
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:border-emerald-400/50"
+                    : "border-amber-500/30 bg-amber-500/10 text-amber-300 hover:border-amber-400/50",
+                )}
+              >
+                {isStrictSandboxed ? (
+                  <ShieldCheck size={13} className="text-emerald-400" />
+                ) : effectiveShieldMode === "compatible" ? (
+                  <ShieldAlert size={13} className="text-amber-400" />
+                ) : (
+                  <Shield size={13} className="text-amber-400" />
+                )}
+                Popup Shield:{" "}
+                {effectiveShieldMode === "auto"
+                  ? isStrictSandboxed
+                    ? "ON (Sandboxed)"
+                    : "Smart Guard"
+                  : effectiveShieldMode === "strict"
+                    ? "Strict (No Popups)"
+                    : "Compatible"}
+                {blockedPopups > 0 ? (
+                  <span className="rounded bg-black/40 px-1.5 py-0.2 text-[10px]">
+                    {blockedPopups} blocked
+                  </span>
+                ) : null}
+              </button>
+            ) : (
+              <p className="flex items-center gap-1.5 text-[11px] text-emerald-300/80">
+                <ShieldCheck size={13} className="text-emerald-400" />
+                Popup-free native stream
+              </p>
+            )}
+          </div>
         </div>
 
         {sources.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
             {sources.map((source) => (
               <button
                 key={source.id}
@@ -289,7 +431,7 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
                   if (source.type !== "external") track();
                 }}
                 className={cn(
-                  "group inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-left transition",
+                  "group inline-flex items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition sm:gap-2 sm:px-3.5 sm:py-2.5",
                   active?.id === source.id
                     ? "border-gold/50 bg-gold/10 text-white"
                     : "border-white/10 bg-white/[0.03] text-white/60 hover:border-white/20 hover:text-white",
@@ -297,7 +439,7 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
               >
                 <span
                   className={cn(
-                    "grid h-8 w-8 place-items-center rounded-lg",
+                    "grid h-8 w-8 shrink-0 place-items-center rounded-lg",
                     active?.id === source.id
                       ? "bg-gold text-black"
                       : "bg-white/5 text-white/40 group-hover:text-gold",
@@ -309,8 +451,8 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
                     <Play size={13} fill="currentColor" />
                   )}
                 </span>
-                <span>
-                  <span className="block max-w-[210px] truncate text-sm font-bold">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-bold sm:max-w-[210px]">
                     {source.label}
                   </span>
                   <span className="mt-0.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-white/35">

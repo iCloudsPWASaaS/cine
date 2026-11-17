@@ -95,15 +95,15 @@ export async function BrowseView({
   for (let index = start; index <= end; index += 1) pageNumbers.push(index);
 
   return (
-    <div className="container-page pb-16 pt-[104px]">
-      <div className="mb-8">
+    <div className="container-page pb-12 pt-[88px] sm:pb-16 sm:pt-[104px]">
+      <div className="mb-6 sm:mb-8">
         <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-gold">
           Cinewood library
         </p>
-        <h1 className="hero-title mt-2 text-6xl text-white sm:text-7xl">
+        <h1 className="hero-title mt-2 text-4xl text-white sm:text-6xl lg:text-7xl">
           {title}
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/45">
+        <p className="mt-2.5 max-w-2xl text-xs leading-relaxed text-white/45 sm:mt-3 sm:text-sm">
           {subtitle}
         </p>
       </div>
@@ -184,13 +184,13 @@ export async function BrowseView({
       </form>
 
       {!forcedGenre ? (
-        <div className="mb-8 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 pr-1 text-[11px] font-bold uppercase tracking-[0.16em] text-white/35">
+        <div className="hide-scrollbar -mx-4 mb-6 flex items-center gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:mb-8 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+          <span className="inline-flex shrink-0 items-center gap-1.5 pr-1 text-[11px] font-bold uppercase tracking-[0.16em] text-white/35">
             <Filter size={12} /> Quick genre
           </span>
           <Link
             href={buildHref({ genre: null, page: null })}
-            className={`badge transition ${
+            className={`badge shrink-0 transition ${
               !genre ? "border-gold/40 text-gold" : "text-white/55 hover:text-gold"
             }`}
           >
@@ -200,7 +200,7 @@ export async function BrowseView({
             <Link
               key={item.id}
               href={buildHref({ genre: item.slug, page: null })}
-              className={`badge transition ${
+              className={`badge shrink-0 transition ${
                 genre === item.slug
                   ? "border-gold/40 bg-gold/10 text-gold"
                   : "text-white/55 hover:border-white/20 hover:text-gold"
@@ -223,7 +223,7 @@ export async function BrowseView({
       </div>
 
       {result.movies.length > 0 ? (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-8 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {result.movies.map((movie) => (
             <MovieCard key={movie.id} movie={movie} />
           ))}

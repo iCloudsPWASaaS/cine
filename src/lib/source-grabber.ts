@@ -10,10 +10,14 @@ import {
 import type { SourceType } from "@/lib/types";
 import {
   detectSourceProvider,
+  upgradeLegacyGatewayUrl,
   type DetectedProvider,
 } from "@/lib/utils";
 
 const execFileAsync = promisify(execFile);
+
+const BROWSER_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 export interface GrabbedSourceItem {
   label: string;
@@ -28,10 +32,13 @@ export interface GrabbedSourceItem {
 }
 
 const IGNORED_IFRAME_HOSTS =
-  /(?:googletagmanager|google-analytics|doubleclick|facebook\.com|twitter\.com|instagram\.com|disqus\.com|recaptcha|cloudflare\.com\/cdn-cgi|ads\.|adservice|googlesyndication)/i;
+  /(?:googletagmanager|google-analytics|doubleclick|facebook\.com|twitter\.com|instagram\.com|disqus\.com|recaptcha|cloudflare\.com\/cdn-cgi|ads\.|adservice|googlesyndication|histats\.com|llvpn\.com)/i;
 
 const IGNORED_EXTENSIONS =
   /\.(?:js|css|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|eot|json|xml)(?:$|\?)/i;
+
+const DEAD_VIDEO_HTML_PATTERN =
+  /(?:this\s+video\s+doesn't\s+exist|video\s+not\s+found|media\s+not\s+found|movie\s+not\s+found|episode\s+not\s+found|file\s+not\s+found|file\s+is\s+no\s+longer\s+available|file\s+was\s+deleted|this\s+video\s+is\s+unavailable|no\s+sources?\s+found|id="__next_error__"|404\s+not\s+found|sorry,\s+this\s+video\s+has\s+been\s+removed)/i;
 
 function resolveUrl(candidate: string, baseUrl?: string): string | null {
   const cleaned = candidate
@@ -46,7 +53,7 @@ function resolveUrl(candidate: string, baseUrl?: string): string | null {
     if (!["http:", "https:"].includes(resolved.protocol)) return null;
     if (IGNORED_IFRAME_HOSTS.test(resolved.hostname)) return null;
     if (IGNORED_EXTENSIONS.test(resolved.pathname)) return null;
-    return resolved.toString();
+    return upgradeLegacyGatewayUrl(resolved.toString());
   } catch {
     return null;
   }
@@ -56,7 +63,7 @@ function toGrabbedItem(detected: DetectedProvider, index = 0): GrabbedSourceItem
   const suffix = index > 0 ? ` #${index + 1}` : "";
   return {
     label: `${detected.name}${detected.quality ? ` • ${detected.quality}` : ""}${suffix}`,
-    url: detected.url,
+    url: upgradeLegacyGatewayUrl(detected.url),
     type: detected.type,
     quality: detected.quality || "HD",
     language: null,
@@ -105,15 +112,156 @@ function extractCandidateUrlsFromHtml(html: string, pageUrl: string): string[] {
     if (url) found.push(url);
   }
 
-  // 5. Known host links (StreamWish, FileMoon, VidHide, DoodStream) anywhere in scripts/HTML
+  // 5. Known host links anywhere in scripts/HTML
   const hostLinkRegex =
-    /https?:\/\/(?:[a-z0-9-]+\.)*(?:streamwish|swdyu|wishembed|sfastwish|flaswish|obeywish|cdnwish|asnwish|jodwish|swish|hlswish|playerwish|embedwish|filemoon|moonmov|kerapoxy|1azayf9w|bymo|fmoonembed|vidhide|vidhidepro|vidhidevip|vidhidepre|vidhidefast|earnvids|smoothpre|dhtpre|peytonepre|callistanise|dood|doodstream|d000d|d0000d|ds2play|ds2video|doods|do7go|myvidplay|vide0)\.[a-z0-9.]+\/[^\s"'<>\\`]+/gi;
+    /https?:\/\/(?:[a-z0-9-]+\.)*(?:streamwish|swdyu|wishembed|sfastwish|flaswish|obeywish|cdnwish|asnwish|jodwish|swish|hlswish|playerwish|embedwish|filemoon|moonmov|kerapoxy|1azayf9w|bymo|fmoonembed|vidhide|vidhidepro|vidhidevip|vidhidepre|vidhidefast|earnvids|smoothpre|dhtpre|peytonepre|callistanise|dood|doodstream|d000d|d0000d|ds2play|ds2video|doods|do7go|myvidplay|vide0|streamtape|strtape|strcloud|mixdrop|voe|vidguard|vgfplay|listeamed|lulustream|luluvdo|mp4upload|vidlink|vidfast|2embed|nontongo|moviesapi|autoembed|multiembed|vidsrc)\.[a-z0-9.]+\/[^\s"'<>\\`]+/gi;
   for (const match of unescaped.matchAll(hostLinkRegex)) {
     const url = resolveUrl(match[0], pageUrl);
     if (url) found.push(url);
   }
 
   return Array.from(new Set(found));
+}
+
+function normalizeTitleTokens(title: string): string[] {
+  return title
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((token) => token.length >= 3 && !["the", "and", "for", "movie", "part"].includes(token));
+}
+
+export async function verifySourcePlayable(
+  item: GrabbedSourceItem,
+  movieTitle?: string,
+): Promise<boolean> {
+  if (item.type === "external") return true;
+
+  // 1. Verify YouTube embed via oEmbed API
+  if (item.type === "youtube") {
+    const idMatch = item.url.match(/\/embed\/([A-Za-z0-9_-]{6,})/i);
+    if (!idMatch?.[1]) return false;
+    try {
+      const watchUrl = `https://www.youtube.com/watch?v=${idMatch[1]}`;
+      const res = await fetch(
+        `https://www.youtube.com/oembed?url=${encodeURIComponent(watchUrl)}&format=json`,
+        {
+          headers: { "User-Agent": BROWSER_UA },
+          signal: AbortSignal.timeout(4500),
+        },
+      );
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  // 2. Verify direct HLS (.m3u8) or MP4 stream reachability
+  if (item.type === "hls" || item.type === "mp4") {
+    try {
+      const origin = new URL(item.url).origin;
+      const res = await fetch(item.url, {
+        method: "GET",
+        headers: {
+          "User-Agent": BROWSER_UA,
+          Range: "bytes=0-2047",
+          Referer: `${origin}/`,
+        },
+        signal: AbortSignal.timeout(5500),
+      });
+      if (!res.ok && res.status !== 206) return false;
+      const contentType = (res.headers.get("content-type") || "").toLowerCase();
+      if (item.type === "hls") {
+        if (
+          contentType.includes("mpegurl") ||
+          contentType.includes("octet-stream") ||
+          contentType.includes("audio/") ||
+          contentType.includes("video/")
+        ) {
+          return true;
+        }
+        const sample = await res.text();
+        return sample.includes("#EXTM3U");
+      }
+      return !contentType.includes("text/html");
+    } catch {
+      return false;
+    }
+  }
+
+  // 3. Verify iframe embed provider (checks server is online + video exists)
+  try {
+    const parsed = new URL(item.url);
+    const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+    const res = await fetch(item.url, {
+      headers: {
+        "User-Agent": BROWSER_UA,
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        Referer: `${parsed.origin}/`,
+      },
+      redirect: "follow",
+      signal: AbortSignal.timeout(6000),
+    });
+
+    if (res.status === 404 || res.status === 410 || res.status === 451 || res.status >= 500) {
+      return false;
+    }
+
+    const html = await res.text();
+    if (!html || html.length < 120) return false;
+
+    if (DEAD_VIDEO_HTML_PATTERN.test(html)) {
+      return false;
+    }
+
+    // Host-specific existence checks
+    if (host.includes("multiembed.mov") || host.includes("streamingnow.mov")) {
+      return (
+        res.ok &&
+        html.length > 15000 &&
+        !html.includes("This video doesn't exist") &&
+        !html.includes("Not Found!")
+      );
+    }
+
+    if (host.includes("2embed.")) {
+      const pageTitle = (html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || "").trim();
+      if (!pageTitle || /^2embed\.cc\s*-\s*player$/i.test(pageTitle)) {
+        return false;
+      }
+      return res.ok;
+    }
+
+    if (host.includes("vidlink.")) {
+      return res.ok && !html.includes("__next_error__") && html.length > 15000;
+    }
+
+    if (host.includes("vidfast.")) {
+      if (!res.ok) return false;
+      if (movieTitle) {
+        const tokens = normalizeTitleTokens(movieTitle);
+        const lowerHtml = html.toLowerCase();
+        if (tokens.length > 0 && !tokens.some((token) => lowerHtml.includes(token))) {
+          return false;
+        }
+      }
+      return html.length > 20000;
+    }
+
+    if (host.includes("nontongo.")) {
+      if (!res.ok) return false;
+      const pageTitle = (html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || "").trim();
+      return Boolean(pageTitle) && !/bad gateway|error|404/i.test(pageTitle);
+    }
+
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 async function tryYtDlp(targetUrl: string): Promise<GrabbedSourceItem[]> {
@@ -345,12 +493,28 @@ export async function grabSourcesFromInput(
 
 const DEFAULT_REGISTRY_PROVIDERS = [
   {
+    name: "VidLink Pro",
+    slug: "vidlink",
+    type: "embed" as const,
+    base_url: "https://vidlink.pro",
+    is_active: true,
+    notes: "Fast 1080p adaptive HLS embed gateway.",
+  },
+  {
+    name: "VidFast",
+    slug: "vidfast",
+    type: "embed" as const,
+    base_url: "https://vidfast.pro",
+    is_active: true,
+    notes: "1080p multi-audio HLS embed gateway.",
+  },
+  {
     name: "StreamWish",
     slug: "streamwish",
     type: "embed" as const,
     base_url: "https://streamwish.to",
     is_active: true,
-    notes: "StreamWish embed provider (/e/ links).",
+    notes: "StreamWish / MultiEmbed HD provider.",
   },
   {
     name: "FileMoon",
@@ -358,7 +522,7 @@ const DEFAULT_REGISTRY_PROVIDERS = [
     type: "embed" as const,
     base_url: "https://filemoon.sx",
     is_active: true,
-    notes: "FileMoon HD embed provider (/e/ links).",
+    notes: "FileMoon / AutoEmbed 1080p provider.",
   },
   {
     name: "VidHide",
@@ -366,7 +530,7 @@ const DEFAULT_REGISTRY_PROVIDERS = [
     type: "embed" as const,
     base_url: "https://vidhidepro.com",
     is_active: true,
-    notes: "VidHide embed provider (/e/ links).",
+    notes: "VidHide / VidSrc SU adaptive HLS provider.",
   },
   {
     name: "DoodStream",
@@ -374,7 +538,31 @@ const DEFAULT_REGISTRY_PROVIDERS = [
     type: "embed" as const,
     base_url: "https://doodstream.com",
     is_active: true,
-    notes: "DoodStream embed provider (/e/ links).",
+    notes: "DoodStream / 2Embed HD provider.",
+  },
+  {
+    name: "NontonGo",
+    slug: "nontongo",
+    type: "embed" as const,
+    base_url: "https://www.nontongo.win",
+    is_active: true,
+    notes: "Multi-subtitle HD embed provider.",
+  },
+  {
+    name: "MoviesAPI",
+    slug: "moviesapi",
+    type: "embed" as const,
+    base_url: "https://moviesapi.to",
+    is_active: true,
+    notes: "VidSpark 1080p multi-server embed provider.",
+  },
+  {
+    name: "VidSrc",
+    slug: "vidsrc",
+    type: "embed" as const,
+    base_url: "https://vidsrc.dev",
+    is_active: true,
+    notes: "VidSrc multi-server backup embed provider.",
   },
 ];
 
@@ -388,58 +576,13 @@ export async function ensureDefaultProvidersInRegistry() {
     });
 }
 
-function extractApiKeyFromText(text?: string | null): string | null {
-  if (!text) return null;
-  const match =
-    text.match(/(?:api[_-]?key|key)\s*[=:]\s*([A-Za-z0-9_-]{10,})/i) ||
-    text.match(/^([A-Za-z0-9]{16,64})$/);
-  return match?.[1] || null;
-}
-
-async function searchHostApiByTitle(provider: {
-  name: string;
-  slug: string;
-  apiUrl: string;
-  embedBase: string;
-  quality: string;
-  priority: number;
-}): Promise<GrabbedSourceItem[]> {
-  try {
-    const res = await fetch(provider.apiUrl, {
-      signal: AbortSignal.timeout(7000),
-    });
-    if (!res.ok) return [];
-    const data = (await res.json()) as {
-      result?:
-        | {
-            files?: { file_code?: string; title?: string }[];
-          }
-        | { file_code?: string; title?: string }[];
-    };
-
-    const files = Array.isArray(data.result)
-      ? data.result
-      : Array.isArray(data.result?.files)
-        ? data.result.files
-        : [];
-
-    return files
-      .filter((f) => f.file_code)
-      .slice(0, 2)
-      .map((f, index) => ({
-        label: `${provider.name} • ${provider.quality}${index > 0 ? ` #${index + 1}` : ""}`,
-        url: `${provider.embedBase}/e/${f.file_code}`,
-        type: "embed" as const,
-        quality: provider.quality,
-        language: null,
-        priority: provider.priority - index,
-        providerSlug: provider.slug,
-        providerName: provider.name,
-        baseUrl: provider.embedBase,
-      }));
-  } catch {
-    return [];
-  }
+function normalizeArchiveTitle(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 async function searchInternetArchiveStreams(
@@ -447,31 +590,44 @@ async function searchInternetArchiveStreams(
 ): Promise<GrabbedSourceItem[]> {
   try {
     const query = `title:("${title.replace(/"/g, "")}") AND mediatype:(movies)`;
-    const searchUrl = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(query)}&fl[]=identifier,title&rows=1&page=1&output=json`;
-    const res = await fetch(searchUrl, { signal: AbortSignal.timeout(7000) });
+    const searchUrl = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(query)}&fl[]=identifier,title&rows=3&page=1&output=json`;
+    const res = await fetch(searchUrl, { signal: AbortSignal.timeout(6500) });
     if (!res.ok) return [];
     const json = (await res.json()) as {
       response?: { docs?: { identifier?: string; title?: string }[] };
     };
-    const identifier = json.response?.docs?.[0]?.identifier;
+    const targetNorm = normalizeArchiveTitle(title);
+    const matchedDoc = (json.response?.docs || []).find((doc) => {
+      if (!doc.identifier || !doc.title) return false;
+      const docNorm = normalizeArchiveTitle(doc.title);
+      return docNorm === targetNorm || docNorm.startsWith(`${targetNorm} `);
+    });
+    const identifier = matchedDoc?.identifier;
     if (!identifier) return [];
 
     const metaRes = await fetch(
       `https://archive.org/metadata/${encodeURIComponent(identifier)}`,
-      { signal: AbortSignal.timeout(7000) },
+      { signal: AbortSignal.timeout(6500) },
     );
     if (!metaRes.ok) return [];
     const meta = (await metaRes.json()) as {
-      files?: { name?: string; format?: string }[];
+      files?: { name?: string; format?: string; size?: string | number }[];
     };
     const files = meta.files || [];
-    const mp4File = files.find(
-      (f) =>
-        f.name &&
-        /\.mp4$/i.test(f.name) &&
-        !f.name.includes("_ia") &&
-        !f.name.includes("sample"),
-    );
+    const isDemoShort =
+      /^(big buck bunny|sintel|tears of steel|elephants dream)$/i.test(
+        title.trim(),
+      );
+    const minBytes = isDemoShort ? 5 * 1024 * 1024 : 35 * 1024 * 1024;
+
+    const mp4File = files.find((f) => {
+      if (!f.name || !/\.mp4$/i.test(f.name)) return false;
+      if (f.name.includes("_ia") || /sample|trailer|promo/i.test(f.name)) {
+        return false;
+      }
+      const size = Number(f.size || 0);
+      return size >= minBytes;
+    });
     const hlsFile = files.find((f) => f.name && /\.m3u8$/i.test(f.name));
 
     const items: GrabbedSourceItem[] = [];
@@ -482,7 +638,7 @@ async function searchInternetArchiveStreams(
         type: "mp4",
         quality: "HD",
         language: null,
-        priority: 28,
+        priority: 30,
         providerSlug: "open-cinema",
         providerName: "Open Cinema",
         baseUrl: "https://archive.org",
@@ -495,7 +651,7 @@ async function searchInternetArchiveStreams(
         type: "hls",
         quality: "Auto",
         language: null,
-        priority: 30,
+        priority: 31,
         providerSlug: "adaptive-hls",
         providerName: "Adaptive HLS",
         baseUrl: "https://archive.org",
@@ -526,11 +682,6 @@ export async function autoDiscoverSourcesForMovie(
     .select("id, name, slug, type, base_url, is_active, notes")
     .eq("is_active", true);
 
-  const bySlug = new Map(
-    (registry || []).map((row) => [row.slug as string, row]),
-  );
-
-  const items: GrabbedSourceItem[] = [];
   let tmdbAbs = movie.tmdb_id ? Math.abs(Number(movie.tmdb_id)) : null;
   const mediaKind = movie.type === "series" ? "tv" : "movie";
 
@@ -550,48 +701,39 @@ export async function autoDiscoverSourcesForMovie(
     }
   }
 
-  // 0. Built-in multi-server full-movie embed gateways (indexed by TMDB / IMDb ID)
+  const primaryGateways: GrabbedSourceItem[] = [];
+  const secondarySpaGateways: GrabbedSourceItem[] = [];
+
+  // 1. Built-in multi-server full-movie embed gateways (indexed by TMDB ID)
   if (tmdbAbs) {
     const isTv = mediaKind === "tv";
-    items.push(
+
+    primaryGateways.push(
       {
-        label: "StreamWish • Multi HD",
+        label: "VidLink Pro • 1080p HLS",
         url: isTv
-          ? `https://multiembed.mov/?video_id=${tmdbAbs}&tmdb=1&s=1&e=1`
-          : `https://multiembed.mov/?video_id=${tmdbAbs}&tmdb=1`,
-        type: "embed",
-        quality: "HD",
-        language: null,
-        priority: 26,
-        providerSlug: "streamwish",
-        providerName: "StreamWish",
-        baseUrl: "https://streamwish.to",
-      },
-      {
-        label: "FileMoon • 1080p Auto",
-        url: isTv
-          ? `https://player.autoembed.cc/embed/tv/${tmdbAbs}/1/1`
-          : `https://player.autoembed.cc/embed/movie/${tmdbAbs}`,
+          ? `https://vidlink.pro/tv/${tmdbAbs}/1/1`
+          : `https://vidlink.pro/movie/${tmdbAbs}`,
         type: "embed",
         quality: "1080p",
         language: null,
-        priority: 25,
-        providerSlug: "filemoon",
-        providerName: "FileMoon",
-        baseUrl: "https://filemoon.sx",
+        priority: 29,
+        providerSlug: "vidlink",
+        providerName: "VidLink Pro",
+        baseUrl: "https://vidlink.pro",
       },
       {
-        label: "VidHide • Adaptive HLS",
+        label: "VidFast • 1080p Auto",
         url: isTv
-          ? `https://vidsrc.icu/embed/tv/${tmdbAbs}/1/1`
-          : `https://vidsrc.icu/embed/movie/${tmdbAbs}`,
+          ? `https://vidfast.pro/tv/${tmdbAbs}/1/1`
+          : `https://vidfast.pro/movie/${tmdbAbs}`,
         type: "embed",
         quality: "1080p",
         language: null,
-        priority: 24,
-        providerSlug: "vidhide",
-        providerName: "VidHide",
-        baseUrl: "https://vidhidepro.com",
+        priority: 28,
+        providerSlug: "vidfast",
+        providerName: "VidFast",
+        baseUrl: "https://vidfast.pro",
       },
       {
         label: "DoodStream • 2Embed HD",
@@ -601,15 +743,97 @@ export async function autoDiscoverSourcesForMovie(
         type: "embed",
         quality: "HD",
         language: null,
-        priority: 23,
+        priority: 25,
         providerSlug: "doodstream",
         providerName: "DoodStream",
         baseUrl: "https://doodstream.com",
       },
+      {
+        label: "StreamWish • Multi HD",
+        url: isTv
+          ? `https://multiembed.mov/?video_id=${tmdbAbs}&tmdb=1&s=1&e=1`
+          : `https://multiembed.mov/?video_id=${tmdbAbs}&tmdb=1`,
+        type: "embed",
+        quality: "HD",
+        language: null,
+        priority: 24,
+        providerSlug: "streamwish",
+        providerName: "StreamWish",
+        baseUrl: "https://streamwish.to",
+      },
+      {
+        label: "NontonGo • Multi-Sub HD",
+        url: isTv
+          ? `https://www.nontongo.win/embed/tv/${tmdbAbs}/1/1`
+          : `https://www.nontongo.win/embed/movie/${tmdbAbs}`,
+        type: "embed",
+        quality: "HD",
+        language: null,
+        priority: 23,
+        providerSlug: "nontongo",
+        providerName: "NontonGo",
+        baseUrl: "https://www.nontongo.win",
+      },
+    );
+
+    secondarySpaGateways.push(
+      {
+        label: "FileMoon • 1080p Auto",
+        url: isTv
+          ? `https://player.autoembed.me/embed/tv/${tmdbAbs}/1/1`
+          : `https://player.autoembed.me/embed/movie/${tmdbAbs}`,
+        type: "embed",
+        quality: "1080p",
+        language: null,
+        priority: 27,
+        providerSlug: "filemoon",
+        providerName: "FileMoon",
+        baseUrl: "https://filemoon.sx",
+      },
+      {
+        label: "VidHide • Adaptive HLS",
+        url: isTv
+          ? `https://vidsrc.su/embed/tv/${tmdbAbs}/1/1`
+          : `https://vidsrc.su/embed/movie/${tmdbAbs}`,
+        type: "embed",
+        quality: "1080p",
+        language: null,
+        priority: 26,
+        providerSlug: "vidhide",
+        providerName: "VidHide",
+        baseUrl: "https://vidhidepro.com",
+      },
+      {
+        label: "MoviesAPI • VidSpark HD",
+        url: isTv
+          ? `https://moviesapi.to/tv/${tmdbAbs}-1-1`
+          : `https://moviesapi.to/movie/${tmdbAbs}`,
+        type: "embed",
+        quality: "1080p",
+        language: null,
+        priority: 22,
+        providerSlug: "moviesapi",
+        providerName: "MoviesAPI",
+        baseUrl: "https://moviesapi.to",
+      },
+      {
+        label: "VidSrc • Multi-Server HD",
+        url: isTv
+          ? `https://vidsrc.dev/embed/tv/${tmdbAbs}/1/1`
+          : `https://vidsrc.dev/embed/movie/${tmdbAbs}`,
+        type: "embed",
+        quality: "1080p",
+        language: null,
+        priority: 21,
+        providerSlug: "vidsrc",
+        providerName: "VidSrc",
+        baseUrl: "https://vidsrc.dev",
+      },
     );
   }
 
-  // 1. Expand any Source Registry templates containing {tmdb_id}, {imdb_id}, {slug}, or {title}
+  // 2. Expand any Source Registry templates containing {tmdb_id}, {imdb_id}, {slug}, or {title}
+  const templateCandidates: GrabbedSourceItem[] = [];
   for (const reg of registry || []) {
     const base = (reg.base_url as string | null)?.trim();
     if (!base) continue;
@@ -630,13 +854,13 @@ export async function autoDiscoverSourcesForMovie(
         .replace(/\{slug\}/gi, encodeURIComponent(movie.slug))
         .replace(/\{title\}/gi, encodeURIComponent(movie.title));
 
-      items.push({
+      templateCandidates.push({
         label: `${reg.name} • HD`,
-        url: expanded,
+        url: upgradeLegacyGatewayUrl(expanded),
         type: (reg.type as SourceType) || "embed",
         quality: "HD",
         language: null,
-        priority: 22,
+        priority: 20,
         providerSlug: reg.slug as string,
         providerName: reg.name as string,
         baseUrl: base,
@@ -644,87 +868,12 @@ export async function autoDiscoverSourcesForMovie(
     }
   }
 
-  // 2. Query StreamWish, FileMoon, VidHide, DoodStream APIs by movie title when API keys are configured
-  const swKey =
-    process.env.STREAMWISH_API_KEY ||
-    extractApiKeyFromText(bySlug.get("streamwish")?.notes as string) ||
-    extractApiKeyFromText(bySlug.get("streamwish")?.base_url as string);
-  const fmKey =
-    process.env.FILEMOON_API_KEY ||
-    extractApiKeyFromText(bySlug.get("filemoon")?.notes as string) ||
-    extractApiKeyFromText(bySlug.get("filemoon")?.base_url as string);
-  const vhKey =
-    process.env.VIDHIDE_API_KEY ||
-    extractApiKeyFromText(bySlug.get("vidhide")?.notes as string) ||
-    extractApiKeyFromText(bySlug.get("vidhide")?.base_url as string);
-  const ddKey =
-    process.env.DOODSTREAM_API_KEY ||
-    extractApiKeyFromText(bySlug.get("doodstream")?.notes as string) ||
-    extractApiKeyFromText(bySlug.get("doodstream")?.base_url as string);
-
-  const hostSearches: Promise<GrabbedSourceItem[]>[] = [];
-  if (swKey) {
-    hostSearches.push(
-      searchHostApiByTitle({
-        name: "StreamWish",
-        slug: "streamwish",
-        apiUrl: `https://api.streamwish.com/api/file/list?key=${encodeURIComponent(swKey)}&title=${encodeURIComponent(movie.title)}`,
-        embedBase: "https://streamwish.to",
-        quality: "HD",
-        priority: 25,
-      }),
-    );
-  }
-  if (fmKey) {
-    hostSearches.push(
-      searchHostApiByTitle({
-        name: "FileMoon",
-        slug: "filemoon",
-        apiUrl: `https://filemoonapi.com/api/file/list?key=${encodeURIComponent(fmKey)}&title=${encodeURIComponent(movie.title)}`,
-        embedBase: "https://filemoon.sx",
-        quality: "1080p",
-        priority: 24,
-      }),
-    );
-  }
-  if (vhKey) {
-    hostSearches.push(
-      searchHostApiByTitle({
-        name: "VidHide",
-        slug: "vidhide",
-        apiUrl: `https://vidhideapi.com/api/file/list?key=${encodeURIComponent(vhKey)}&title=${encodeURIComponent(movie.title)}`,
-        embedBase: "https://vidhidepro.com",
-        quality: "HD",
-        priority: 23,
-      }),
-    );
-  }
-  if (ddKey) {
-    hostSearches.push(
-      searchHostApiByTitle({
-        name: "DoodStream",
-        slug: "doodstream",
-        apiUrl: `https://doodapi.co/api/search/videos?key=${encodeURIComponent(ddKey)}&search_term=${encodeURIComponent(movie.title)}`,
-        embedBase: "https://doodstream.com",
-        quality: "HD",
-        priority: 22,
-      }),
-    );
-  }
-
-  // 3. Search direct MP4 / HLS (.m3u8) on Internet Archive by title
-  hostSearches.push(searchInternetArchiveStreams(movie.title));
-
-  const resolvedLists = await Promise.all(hostSearches);
-  for (const list of resolvedLists) {
-    items.push(...list);
-  }
-
-  // 4. YouTube source (from movie.trailer_url or TMDB videos)
+  // 3. YouTube trailer candidate
+  const trailerCandidates: GrabbedSourceItem[] = [];
   if (movie.trailer_url) {
     const detected = detectSourceProvider(movie.trailer_url);
     if (detected) {
-      items.push({
+      trailerCandidates.push({
         ...toGrabbedItem(detected),
         label: "Official Trailer • HD",
         priority: 5,
@@ -735,7 +884,7 @@ export async function autoDiscoverSourcesForMovie(
       const details = await getTmdbDetails(mediaKind, tmdbAbs);
       const trailer = pickTmdbTrailer(details);
       if (trailer?.key) {
-        items.push({
+        trailerCandidates.push({
           label: `Official Trailer${trailer.name ? ` • ${trailer.name}` : ""}`,
           url: `https://www.youtube.com/embed/${trailer.key}`,
           type: "youtube",
@@ -752,7 +901,69 @@ export async function autoDiscoverSourcesForMovie(
     }
   }
 
-  return items;
+  // 4. Verify all candidates in parallel before returning
+  const [
+    verifiedPrimary,
+    verifiedSecondary,
+    verifiedTemplates,
+    archiveStreams,
+    verifiedTrailers,
+  ] = await Promise.all([
+    Promise.all(
+      primaryGateways.map(async (item) =>
+        (await verifySourcePlayable(item, movie.title)) ? item : null,
+      ),
+    ),
+    Promise.all(
+      secondarySpaGateways.map(async (item) =>
+        (await verifySourcePlayable(item, movie.title)) ? item : null,
+      ),
+    ),
+    Promise.all(
+      templateCandidates.map(async (item) =>
+        (await verifySourcePlayable(item, movie.title)) ? item : null,
+      ),
+    ),
+    searchInternetArchiveStreams(movie.title).then((items) =>
+      Promise.all(
+        items.map(async (item) =>
+          (await verifySourcePlayable(item, movie.title)) ? item : null,
+        ),
+      ),
+    ),
+    Promise.all(
+      trailerCandidates.map(async (item) =>
+        (await verifySourcePlayable(item, movie.title)) ? item : null,
+      ),
+    ),
+  ]);
+
+  const validPrimary = verifiedPrimary.filter(
+    (item): item is GrabbedSourceItem => Boolean(item),
+  );
+  const validSecondary =
+    validPrimary.length > 0
+      ? verifiedSecondary.filter((item): item is GrabbedSourceItem =>
+          Boolean(item),
+        )
+      : [];
+  const validTemplates = verifiedTemplates.filter(
+    (item): item is GrabbedSourceItem => Boolean(item),
+  );
+  const validArchive = archiveStreams.filter(
+    (item): item is GrabbedSourceItem => Boolean(item),
+  );
+  const validTrailers = verifiedTrailers.filter(
+    (item): item is GrabbedSourceItem => Boolean(item),
+  );
+
+  return [
+    ...validArchive,
+    ...validPrimary,
+    ...validSecondary,
+    ...validTemplates,
+    ...validTrailers,
+  ];
 }
 
 export async function grabAndSaveMovieSources(
@@ -764,7 +975,14 @@ export async function grabAndSaveMovieSources(
 
   if (rawInput.trim()) {
     const fromInput = await grabSourcesFromInput(rawInput);
-    collected.push(...fromInput);
+    const verifiedInput = await Promise.all(
+      fromInput.map(async (item) =>
+        (await verifySourcePlayable(item)) ? item : null,
+      ),
+    );
+    for (const item of verifiedInput) {
+      if (item) collected.push(item);
+    }
   }
 
   if (collected.length === 0 || !rawInput.trim() || options?.autoDiscover) {
@@ -789,11 +1007,26 @@ export async function grabAndSaveMovieSources(
   const supabase = createAdminClient();
   const [{ data: registryRows }, { data: existingRows }] = await Promise.all([
     supabase.from("sources").select("id, slug"),
-    supabase.from("movie_sources").select("url").eq("movie_id", movieId),
+    supabase.from("movie_sources").select("id, url").eq("movie_id", movieId),
   ]);
 
+  // Clean up any legacy offline gateway URLs stored on this movie
+  const deadLegacyIds = (existingRows || [])
+    .filter((row) =>
+      /https?:\/\/(?:player\.autoembed\.cc|vidsrc\.icu|moviesapi\.club)\//i.test(
+        String(row.url || ""),
+      ),
+    )
+    .map((row) => row.id as string);
+
+  if (deadLegacyIds.length > 0) {
+    await supabase.from("movie_sources").delete().in("id", deadLegacyIds);
+  }
+
   const existingUrls = new Set(
-    (existingRows || []).map((row) => row.url as string),
+    (existingRows || [])
+      .filter((row) => !deadLegacyIds.includes(row.id as string))
+      .map((row) => row.url as string),
   );
   const slugToId = new Map<string, string>(
     (registryRows || []).map((row) => [row.slug as string, row.id as string]),

@@ -65,8 +65,35 @@ export function youtubeEmbed(url: string) {
   return url;
 }
 
+export type ProviderKey =
+  | "streamwish"
+  | "filemoon"
+  | "doodstream"
+  | "vidhide"
+  | "streamtape"
+  | "mixdrop"
+  | "voe"
+  | "vidguard"
+  | "lulustream"
+  | "mp4upload"
+  | "gdrive"
+  | "vidlink"
+  | "vidsrc"
+  | "autoembed"
+  | "multiembed"
+  | "twoembed"
+  | "embedsu"
+  | "vidfast"
+  | "videasy"
+  | "moviesapi"
+  | "nontongo"
+  | "youtube"
+  | "hls"
+  | "mp4"
+  | "embed";
+
 export interface DetectedProvider {
-  key: "streamwish" | "filemoon" | "doodstream" | "vidhide" | "youtube" | "hls" | "mp4" | "embed";
+  key: ProviderKey;
   name: string;
   slug: string;
   type: "hls" | "mp4" | "embed" | "youtube" | "external";
@@ -77,13 +104,14 @@ export interface DetectedProvider {
 }
 
 const HOST_PROVIDERS: {
-  key: "streamwish" | "filemoon" | "doodstream" | "vidhide";
+  key: ProviderKey;
   name: string;
   slug: string;
   quality: string;
   priority: number;
   baseUrl: string;
   hostPattern: RegExp;
+  embedFormat?: (parsed: URL, code: string) => string;
 }[] = [
   {
     key: "streamwish",
@@ -125,6 +153,168 @@ const HOST_PROVIDERS: {
     hostPattern:
       /(?:^|\.)(dood|doodstream|d000d|d0000d|ds2play|ds2video|doods|do7go|myvidplay|vide0)\.[a-z0-9.]+$/i,
   },
+  {
+    key: "streamtape",
+    name: "StreamTape",
+    slug: "streamtape",
+    quality: "HD",
+    priority: 21,
+    baseUrl: "https://streamtape.com",
+    hostPattern:
+      /(?:^|\.)(streamtape|strtape|strcloud|stape)\.[a-z0-9.]+$/i,
+  },
+  {
+    key: "mixdrop",
+    name: "MixDrop",
+    slug: "mixdrop",
+    quality: "HD",
+    priority: 21,
+    baseUrl: "https://mixdrop.co",
+    hostPattern:
+      /(?:^|\.)(mixdrop|mdbekjwqa|mdfx9dc8n)\.[a-z0-9.]+$/i,
+  },
+  {
+    key: "voe",
+    name: "Voe",
+    slug: "voe",
+    quality: "1080p",
+    priority: 22,
+    baseUrl: "https://voe.sx",
+    hostPattern:
+      /(?:^|\.)(voe|voe-unblock|launchreliantcleaverriver)\.[a-z0-9.]+$/i,
+  },
+  {
+    key: "vidguard",
+    name: "VidGuard",
+    slug: "vidguard",
+    quality: "1080p",
+    priority: 22,
+    baseUrl: "https://vidguard.to",
+    hostPattern:
+      /(?:^|\.)(vidguard|vgfplay|vgembed|listeamed|bembed)\.[a-z0-9.]+$/i,
+  },
+  {
+    key: "lulustream",
+    name: "LuluStream",
+    slug: "lulustream",
+    quality: "HD",
+    priority: 21,
+    baseUrl: "https://lulustream.com",
+    hostPattern:
+      /(?:^|\.)(lulustream|luluvdo|lulu)\.[a-z0-9.]+$/i,
+  },
+  {
+    key: "mp4upload",
+    name: "Mp4Upload",
+    slug: "mp4upload",
+    quality: "HD",
+    priority: 20,
+    baseUrl: "https://www.mp4upload.com",
+    hostPattern: /(?:^|\.)mp4upload\.[a-z0-9.]+$/i,
+    embedFormat: (parsed, code) =>
+      `${parsed.protocol}//${parsed.host}/embed-${code.replace(/^embed-/, "")}.html`,
+  },
+];
+
+const GATEWAY_PROVIDERS: {
+  key: ProviderKey;
+  name: string;
+  slug: string;
+  quality: string;
+  priority: number;
+  baseUrl: string;
+  hostPattern: RegExp;
+}[] = [
+  {
+    key: "vidlink",
+    name: "VidLink Pro",
+    slug: "vidlink",
+    quality: "1080p",
+    priority: 27,
+    baseUrl: "https://vidlink.pro",
+    hostPattern: /(?:^|\.)vidlink\.[a-z0-9.]+$/i,
+  },
+  {
+    key: "vidsrc",
+    name: "VidSrc",
+    slug: "vidsrc",
+    quality: "1080p",
+    priority: 26,
+    baseUrl: "https://vidsrc.icu",
+    hostPattern: /(?:^|\.)(vidsrc|vidsrcme|vidsrcto)\.[a-z0-9.]+$/i,
+  },
+  {
+    key: "multiembed",
+    name: "StreamWish",
+    slug: "streamwish",
+    quality: "HD",
+    priority: 25,
+    baseUrl: "https://multiembed.mov",
+    hostPattern: /(?:^|\.)(multiembed|superembed)\.[a-z0-9.]+$/i,
+  },
+  {
+    key: "autoembed",
+    name: "FileMoon",
+    slug: "filemoon",
+    quality: "1080p",
+    priority: 25,
+    baseUrl: "https://player.autoembed.cc",
+    hostPattern: /(?:^|\.)autoembed\.[a-z0-9.]+$/i,
+  },
+  {
+    key: "embedsu",
+    name: "Embed.su",
+    slug: "embedsu",
+    quality: "1080p",
+    priority: 24,
+    baseUrl: "https://embed.su",
+    hostPattern: /(?:^|\.)embed\.su$/i,
+  },
+  {
+    key: "vidfast",
+    name: "VidFast",
+    slug: "vidfast",
+    quality: "1080p",
+    priority: 24,
+    baseUrl: "https://vidfast.pro",
+    hostPattern: /(?:^|\.)vidfast\.[a-z0-9.]+$/i,
+  },
+  {
+    key: "videasy",
+    name: "Videasy",
+    slug: "videasy",
+    quality: "1080p",
+    priority: 24,
+    baseUrl: "https://player.videasy.net",
+    hostPattern: /(?:^|\.)videasy\.[a-z0-9.]+$/i,
+  },
+  {
+    key: "twoembed",
+    name: "DoodStream",
+    slug: "doodstream",
+    quality: "HD",
+    priority: 23,
+    baseUrl: "https://www.2embed.cc",
+    hostPattern: /(?:^|\.)2embed\.[a-z0-9.]+$/i,
+  },
+  {
+    key: "moviesapi",
+    name: "MoviesAPI",
+    slug: "moviesapi",
+    quality: "1080p",
+    priority: 23,
+    baseUrl: "https://moviesapi.club",
+    hostPattern: /(?:^|\.)moviesapi\.[a-z0-9.]+$/i,
+  },
+  {
+    key: "nontongo",
+    name: "NontonGo",
+    slug: "nontongo",
+    quality: "HD",
+    priority: 22,
+    baseUrl: "https://www.nontongo.win",
+    hostPattern: /(?:^|\.)nontongo\.[a-z0-9.]+$/i,
+  },
 ];
 
 export function extractIframeSrc(input: string): string {
@@ -158,7 +348,9 @@ export function detectSourceProvider(rawInput: string): DetectedProvider | null 
           /^\/(?:e|d|f|v|w|file|embed|download|watch)\/([A-Za-z0-9_-]+)/i,
         ) || cleanPath.match(/^\/([A-Za-z0-9_-]{6,})$/);
       const embedUrl = codeMatch
-        ? `${parsed.protocol}//${parsed.host}/e/${codeMatch[1]}${parsed.search}`
+        ? provider.embedFormat
+          ? provider.embedFormat(parsed, codeMatch[1])
+          : `${parsed.protocol}//${parsed.host}/e/${codeMatch[1]}${parsed.search}`
         : parsed.toString();
 
       return {
@@ -172,6 +364,38 @@ export function detectSourceProvider(rawInput: string): DetectedProvider | null 
         baseUrl: provider.baseUrl,
       };
     }
+  }
+
+  for (const gateway of GATEWAY_PROVIDERS) {
+    if (gateway.hostPattern.test(host)) {
+      return {
+        key: gateway.key,
+        name: gateway.name,
+        slug: gateway.slug,
+        type: "embed",
+        url: parsed.toString(),
+        quality: gateway.quality,
+        priority: gateway.priority,
+        baseUrl: gateway.baseUrl,
+      };
+    }
+  }
+
+  if (/^drive\.google\.com$/i.test(host)) {
+    const fileMatch = parsed.pathname.match(/\/file\/d\/([A-Za-z0-9_-]+)/);
+    const embedUrl = fileMatch
+      ? `https://drive.google.com/file/d/${fileMatch[1]}/preview`
+      : parsed.toString();
+    return {
+      key: "gdrive",
+      name: "Google Drive",
+      slug: "gdrive",
+      type: "embed",
+      url: embedUrl,
+      quality: "HD",
+      priority: 22,
+      baseUrl: "https://drive.google.com",
+    };
   }
 
   if (
@@ -230,11 +454,80 @@ export function detectSourceProvider(rawInput: string): DetectedProvider | null 
   };
 }
 
+export function upgradeLegacyGatewayUrl(rawUrl: string): string {
+  try {
+    const parsed = new URL(rawUrl);
+    const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+
+    // Upgrade dead player.autoembed.cc -> live player.autoembed.me
+    if (host === "player.autoembed.cc") {
+      parsed.hostname = "player.autoembed.me";
+      return parsed.toString();
+    }
+
+    // Unwrap outer ad-wrapper autoembed.co -> direct player.autoembed.me
+    if (host === "autoembed.co") {
+      const movieMatch = parsed.pathname.match(/^\/movie\/tmdb\/(\d+)/i);
+      if (movieMatch) {
+        return `https://player.autoembed.me/embed/movie/${movieMatch[1]}`;
+      }
+      const tvMatch = parsed.pathname.match(/^\/tv\/tmdb\/(\d+)-(\d+)-(\d+)/i);
+      if (tvMatch) {
+        return `https://player.autoembed.me/embed/tv/${tvMatch[1]}/${tvMatch[2]}/${tvMatch[3]}`;
+      }
+    }
+
+    // Upgrade dead vidsrc mirrors (.icu, .xyz, .vip, .in, .pm, .net, .cc, .to) -> live vidsrc.su
+    if (
+      /^(?:vidsrc\.(?:icu|xyz|vip|in|pm|net|to)|vidsrcto\.[a-z]+)$/i.test(host)
+    ) {
+      const cleanPath = parsed.pathname.replace(/^\/v2\/embed\//i, "/embed/");
+      return `https://vidsrc.su${cleanPath}${parsed.search}`;
+    }
+
+    if (host === "vidsrc.cc") {
+      const cleanPath = parsed.pathname.replace(/^\/v2\/embed\//i, "/embed/");
+      return `https://vidsrc.su${cleanPath}${parsed.search}`;
+    }
+
+    // Upgrade dead moviesapi.club -> live moviesapi.to
+    if (host === "moviesapi.club") {
+      parsed.hostname = "moviesapi.to";
+      return parsed.toString();
+    }
+
+    return parsed.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
+export function isSandboxIncompatibleHost(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./i, "").toLowerCase();
+    return /(?:^|\.)(?:2embed|autoembed|player\.autoembed|vidlink|vidfast|vidsrc|vidsrcto|multiembed|streamingnow|superembed|moviesapi|nontongo|embed\.su|videasy|filemoon|streamwish|vidhide|doodstream|dood|mixdrop|streamtape|voe|vidguard|lulustream|mp4upload)\b/i.test(
+      host,
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function isSandboxSafeHost(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./i, "").toLowerCase();
+    return /(?:^|\.)(?:youtube|youtube-nocookie|youtu|archive)\b/i.test(host);
+  } catch {
+    return false;
+  }
+}
+
 export function normalizeEmbedUrl(url: string) {
   if (!url) return url;
-  const detected = detectSourceProvider(url);
-  if (!detected) return url;
-  return detected.url;
+  const upgraded = upgradeLegacyGatewayUrl(url);
+  const detected = detectSourceProvider(upgraded);
+  if (!detected) return upgraded;
+  return upgradeLegacyGatewayUrl(detected.url);
 }
 
 export function externalUrl(url: string) {

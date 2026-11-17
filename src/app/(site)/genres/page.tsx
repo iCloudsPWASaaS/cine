@@ -23,22 +23,22 @@ export default async function GenresPage() {
   const genres = await getGenresWithCounts();
 
   return (
-    <div className="container-page pb-20 pt-[112px]">
+    <div className="container-page pb-16 pt-[88px] sm:pb-20 sm:pt-[112px]">
       <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-gold">
         Discover
       </p>
-      <h1 className="hero-title mt-2 text-7xl">Genres</h1>
-      <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/45">
+      <h1 className="hero-title mt-2 text-5xl sm:text-7xl">Genres</h1>
+      <p className="mt-2.5 max-w-xl text-xs leading-relaxed text-white/45 sm:mt-3 sm:text-sm">
         Every story has a shape. Find yours — from pulse-racing thrillers to
         quiet character dramas.
       </p>
 
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="mt-8 grid grid-cols-2 gap-3 sm:mt-10 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
         {genres.map((genre, index) => (
           <Link
             key={genre.id}
             href={`/genre/${genre.slug}`}
-            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-gold/30"
+            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition duration-300 hover:-translate-y-1 hover:border-gold/30 sm:p-6"
           >
             <div
               className={`absolute inset-0 bg-gradient-to-br ${accents[index % accents.length]} via-transparent to-transparent opacity-60 transition group-hover:opacity-100`}
@@ -51,7 +51,7 @@ export default async function GenresPage() {
                   className="text-white/25 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-gold"
                 />
               </div>
-              <h2 className="display mt-10 text-4xl tracking-[0.04em]">
+              <h2 className="display mt-6 text-2xl tracking-[0.04em] sm:mt-10 sm:text-4xl">
                 {genre.name}
               </h2>
               <p className="mt-1 text-xs text-white/40">

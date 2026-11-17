@@ -16,14 +16,14 @@ export function MovieRow({ title, movies, href, ranked, eyebrow }: MovieRowProps
 
   return (
     <section>
-      <div className="mb-5 flex items-end justify-between gap-4">
+      <div className="mb-4 flex items-end justify-between gap-3 sm:mb-5 sm:gap-4">
         <div>
           {eyebrow ? (
             <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-gold/80">
               {eyebrow}
             </p>
           ) : null}
-          <h2 className="display text-3xl tracking-[0.04em] text-white sm:text-4xl">
+          <h2 className="display text-2xl tracking-[0.04em] text-white sm:text-4xl">
             {title}
           </h2>
         </div>
@@ -41,11 +41,11 @@ export function MovieRow({ title, movies, href, ranked, eyebrow }: MovieRowProps
         ) : null}
       </div>
 
-      <div className="hide-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
+      <div className="hide-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:gap-4 sm:px-6 lg:mx-0 lg:px-0">
         {movies.map((movie, index) => (
           <div
             key={movie.id}
-            className="w-[152px] shrink-0 sm:w-[172px] lg:w-[188px]"
+            className="w-[138px] shrink-0 snap-start sm:w-[172px] lg:w-[188px]"
           >
             <MovieCard movie={movie} rank={ranked ? index + 1 : undefined} />
           </div>

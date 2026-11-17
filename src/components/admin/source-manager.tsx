@@ -28,13 +28,16 @@ const typeIcon = {
 } as const;
 
 const SUPPORTED_HOSTS = [
+  "VidLink Pro",
+  "VidFast",
   "StreamWish",
   "FileMoon",
   "DoodStream",
   "VidHide",
+  "StreamTape",
+  "MixDrop",
   "HLS (.m3u8)",
   "MP4",
-  "YouTube",
 ];
 
 export function SourceManager({
@@ -108,11 +111,12 @@ export function SourceManager({
           </SubmitButton>
         </div>
         <p className="mt-2 text-[11px] text-white/35">
-          Leave blank and click <strong>Grab source</strong> to auto-search
-          configured providers (StreamWish / FileMoon / VidHide / DoodStream API
-          keys, Source Registry URL templates, Archive MP4/HLS &amp; YouTube), or
-          paste any share/embed link (<code className="text-white/55">/d/</code>
-          , <code className="text-white/55">/f/</code>,{" "}
+          Leave blank and click <strong>Grab source</strong> to auto-discover
+          and verify playable streams across built-in TMDB/IMDb providers
+          (VidLink Pro, VidFast, FileMoon, VidHide, DoodStream, StreamWish,
+          NontonGo, MoviesAPI, VidSrc, Archive MP4/HLS &amp; YouTube), or paste
+          any share/embed link (<code className="text-white/55">/d/</code>,{" "}
+          <code className="text-white/55">/f/</code>,{" "}
           <code className="text-white/55">/v/</code> →{" "}
           <code className="text-white/55">/e/</code>).
         </p>

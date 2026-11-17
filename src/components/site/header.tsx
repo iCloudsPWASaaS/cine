@@ -49,17 +49,17 @@ export function Header({ siteName, logoText, genres }: HeaderProps) {
     <header
       className={cn(
         "fixed inset-x-0 top-0 z-50 transition duration-300",
-        scrolled
+        scrolled || searchOpen
           ? "border-b border-white/10 bg-ink/85 backdrop-blur-xl"
           : "border-b border-transparent bg-gradient-to-b from-black/60 to-transparent",
       )}
     >
-      <div className="container-page flex h-[72px] items-center gap-4">
-        <Link href="/" className="group flex shrink-0 items-center gap-2.5">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-gold text-black shadow-[0_8px_30px_-10px_rgba(242,200,107,0.8)] transition group-hover:rotate-6">
-            <Clapperboard size={19} strokeWidth={2.4} />
+      <div className="container-page flex h-16 items-center gap-3 sm:h-[72px] sm:gap-4">
+        <Link href="/" className="group flex shrink-0 items-center gap-2 sm:gap-2.5">
+          <span className="grid h-8 w-8 place-items-center rounded-xl bg-gold text-black shadow-[0_8px_30px_-10px_rgba(242,200,107,0.8)] transition group-hover:rotate-6 sm:h-9 sm:w-9">
+            <Clapperboard size={18} strokeWidth={2.4} />
           </span>
-          <span className="display text-[26px] leading-none tracking-[0.08em] text-white">
+          <span className="display text-[22px] leading-none tracking-[0.08em] text-white sm:text-[26px]">
             {logoText || siteName.toUpperCase()}
           </span>
         </Link>
@@ -188,7 +188,7 @@ export function Header({ siteName, logoText, genres }: HeaderProps) {
             onClick={() => setMobileOpen(false)}
             aria-label="Close menu"
           />
-          <div className="absolute right-0 top-0 flex h-full w-[86%] max-w-sm flex-col border-l border-white/10 bg-ink-soft p-5">
+          <div className="absolute right-0 top-0 flex h-full w-[86%] max-w-sm flex-col overflow-y-auto border-l border-white/10 bg-ink-soft p-5">
             <div className="mb-6 flex items-center justify-between">
               <span className="display text-2xl tracking-[0.08em]">
                 {logoText || "CINEWOOD"}

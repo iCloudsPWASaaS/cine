@@ -292,7 +292,7 @@ export async function grabMovieSourcesAction(formData: FormData) {
   if (result.count === 0 || (!sourceInput && result.newCount === 0)) {
     fail(
       back,
-      "No new sources found. Paste a link in the input box, add a {tmdb_id} Base URL template in /admin/sources, or set provider API keys in .env.local.",
+      "No new verified sources found. All reachable streams are already attached, or paste a direct stream/embed URL in the input box.",
     );
   }
 

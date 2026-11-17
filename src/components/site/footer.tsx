@@ -9,8 +9,8 @@ interface FooterProps {
 
 export function Footer({ settings, genres }: FooterProps) {
   return (
-    <footer className="mt-24 border-t border-white/10 bg-black/30">
-      <div className="container-page grid gap-10 py-14 md:grid-cols-[1.4fr_1fr_1fr]">
+    <footer className="mt-14 border-t border-white/10 bg-black/30 sm:mt-24">
+      <div className="container-page grid gap-8 py-10 sm:gap-10 sm:py-14 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
           <Link href="/" className="flex items-center gap-2.5">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-gold text-black">

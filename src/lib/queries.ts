@@ -5,6 +5,7 @@ import type {
   Genre,
   Movie,
   MovieSource,
+  MovieMetadata,
   MovieWithTaxonomy,
   SiteSettings,
 } from "@/lib/types";
@@ -112,6 +113,49 @@ export async function getGenresWithCounts(): Promise<
   return ((genresResult.data || []) as Genre[])
     .map((genre) => ({ ...genre, count: counts.get(genre.id) || 0 }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+export async function getMovieYears(): Promise<number[]> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("movies")
+    .select("release_date")
+    .eq("published", true)
+    .not("release_date", "is", null)
+    .order("release_date", { ascending: false })
+    .limit(2000);
+
+  const years = new Set<number>();
+  for (const row of data || []) {
+    const year = Number(String(row.release_date).slice(0, 4));
+    if (Number.isFinite(year) && year >= 1900) years.add(year);
+  }
+  return Array.from(years).sort((a, b) => b - a).slice(0, 40);
+}
+
+export async function getMovieCountries(): Promise<string[]> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("movies")
+    .select("metadata")
+    .eq("published", true)
+    .limit(2000);
+
+  const countries = new Set<string>();
+  for (const row of data || []) {
+    const metadata = row.metadata as MovieMetadata;
+    if (typeof metadata?.country === "string" && metadata.country.trim()) {
+      countries.add(metadata.country.trim());
+    }
+    for (const country of metadata?.countries || []) {
+      if (typeof country === "string" && country.trim()) {
+        countries.add(country.trim());
+      }
+    }
+  }
+  return Array.from(countries)
+    .sort((a, b) => a.localeCompare(b))
+    .slice(0, 40);
 }
 
 export async function getFeatured(limit = 5): Promise<Movie[]> {
@@ -325,6 +369,29 @@ export async function browseMovies(
       .maybeSingle();
     if (!category) return { movies: [], count: 0, page, perPage };
     categoryId = category.id;
+  }
+
+  if (filters.country) {
+    const country = filters.country.trim();
+    const [byCountry, byCountries] = await Promise.all([
+      supabase.from("movies").select("id").eq("metadata->>country", country),
+      supabase
+        .from("movies")
+        .select("id")
+        .contains("metadata", { countries: [country] }),
+    ]);
+    const ids = new Set(
+      [...(byCountry.data || []), ...(byCountries.data || [])].map(
+        (row) => row.id as string,
+      ),
+    );
+    if (ids.size === 0) return { movies: [], count: 0, page, perPage };
+    restrictedIds = restrictedIds
+      ? restrictedIds.filter((id) => ids.has(id))
+      : Array.from(ids);
+    if (restrictedIds.length === 0) {
+      return { movies: [], count: 0, page, perPage };
+    }
   }
 
   let query = supabase

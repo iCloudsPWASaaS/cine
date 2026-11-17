@@ -11,6 +11,63 @@ interface HeaderProps {
   siteName: string;
   logoText: string;
   genres: { name: string; slug: string }[];
+  years: number[];
+  countries: string[];
+}
+
+interface DropdownItem {
+  key: string;
+  label: string;
+  href: string;
+}
+
+function NavDropdown({
+  label,
+  items,
+  allLabel,
+  active,
+}: {
+  label: string;
+  items: DropdownItem[];
+  allLabel: string;
+  active?: boolean;
+}) {
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        className={cn(
+          "inline-flex items-center gap-1 rounded-full px-3.5 py-2 text-sm font-semibold transition",
+          active
+            ? "bg-white/10 text-white"
+            : "text-white/60 hover:text-white",
+        )}
+      >
+        {label}
+        <ChevronDown size={14} />
+      </button>
+      <div className="invisible absolute left-0 top-full w-[440px] pt-3 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+        <div className="grid max-h-[340px] grid-cols-2 gap-1 overflow-y-auto rounded-2xl border border-white/10 bg-panel/95 p-3 shadow-2xl backdrop-blur-xl">
+          {items.map((item) => (
+            <Link
+              key={item.key}
+              href={item.href}
+              className="truncate rounded-xl px-3 py-2 text-sm text-white/70 transition hover:bg-white/10 hover:text-gold"
+              title={item.label}
+            >
+              {item.label}
+            </Link>
+          ))}
+          <Link
+            href="/movies"
+            className="col-span-2 mt-1 rounded-xl border border-white/10 px-3 py-2 text-center text-xs font-bold uppercase tracking-[0.16em] text-gold transition hover:bg-white/5"
+          >
+            {allLabel}
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const links = [
@@ -19,7 +76,13 @@ const links = [
   { href: "/series", label: "Series" },
 ];
 
-export function Header({ siteName, logoText, genres }: HeaderProps) {
+export function Header({
+  siteName,
+  logoText,
+  genres,
+  years,
+  countries,
+}: HeaderProps) {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -79,39 +142,34 @@ export function Header({ siteName, logoText, genres }: HeaderProps) {
             );
           })}
 
-          <div className="group relative">
-            <button
-              type="button"
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full px-3.5 py-2 text-sm font-semibold transition",
-                pathname.startsWith("/genre")
-                  ? "bg-white/10 text-white"
-                  : "text-white/60 hover:text-white",
-              )}
-            >
-              Genres
-              <ChevronDown size={14} />
-            </button>
-            <div className="invisible absolute left-0 top-full w-[440px] pt-3 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-              <div className="grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-panel/95 p-3 shadow-2xl backdrop-blur-xl">
-                {genres.slice(0, 18).map((genre) => (
-                  <Link
-                    key={genre.slug}
-                    href={`/genre/${genre.slug}`}
-                    className="rounded-xl px-3 py-2 text-sm text-white/70 transition hover:bg-white/10 hover:text-gold"
-                  >
-                    {genre.name}
-                  </Link>
-                ))}
-                <Link
-                  href="/genres"
-                  className="col-span-2 mt-1 rounded-xl border border-white/10 px-3 py-2 text-center text-xs font-bold uppercase tracking-[0.16em] text-gold transition hover:bg-white/5"
-                >
-                  All genres
-                </Link>
-              </div>
-            </div>
-          </div>
+          <NavDropdown
+            label="Genres"
+            items={genres.slice(0, 18).map((genre) => ({
+              key: genre.slug,
+              label: genre.name,
+              href: `/genre/${genre.slug}`,
+            }))}
+            allLabel="All genres"
+            active={pathname.startsWith("/genre")}
+          />
+          <NavDropdown
+            label="Year"
+            items={years.map((year) => ({
+              key: String(year),
+              label: String(year),
+              href: `/movies?year=${year}`,
+            }))}
+            allLabel="All years"
+          />
+          <NavDropdown
+            label="Country"
+            items={countries.map((country) => ({
+              key: country,
+              label: country,
+              href: `/movies?country=${encodeURIComponent(country)}`,
+            }))}
+            allLabel="All countries"
+          />
         </nav>
 
         <div className="ml-auto hidden items-center gap-3 md:flex">
@@ -233,6 +291,42 @@ export function Header({ siteName, logoText, genres }: HeaderProps) {
                     className="badge text-white/70 hover:text-gold"
                   >
                     {genre.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 border-t border-white/10 pt-5">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-white/40">
+                Browse by year
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {years.slice(0, 16).map((year) => (
+                  <Link
+                    key={year}
+                    href={`/movies?year=${year}`}
+                    onClick={() => setMobileOpen(false)}
+                    className="badge text-white/70 hover:text-gold"
+                  >
+                    {year}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 border-t border-white/10 pt-5">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-white/40">
+                Browse by country
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {countries.slice(0, 20).map((country) => (
+                  <Link
+                    key={country}
+                    href={`/movies?country=${encodeURIComponent(country)}`}
+                    onClick={() => setMobileOpen(false)}
+                    className="badge text-white/70 hover:text-gold"
+                  >
+                    {country}
                   </Link>
                 ))}
               </div>

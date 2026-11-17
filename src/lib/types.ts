@@ -141,6 +141,7 @@ export interface BrowseFilters {
   genre?: string;
   category?: string;
   year?: string;
+  country?: string;
   upcoming?: string;
   sort?: string;
   page?: number;

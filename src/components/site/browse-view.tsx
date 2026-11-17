@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Filter, Search, SlidersHorizontal } from "lucide-react";
+import { Filter, Search, SlidersHorizontal, X } from "lucide-react";
 import { MovieCard } from "@/components/site/movie-card";
 import {
   browseMovies,
   getCategories,
   getGenres,
+  getMovieCountries,
 } from "@/lib/queries";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -37,14 +38,26 @@ export async function BrowseView({
   const genre = forcedGenre || param(searchParams.genre);
   const category = param(searchParams.category);
   const year = param(searchParams.year);
+  const country = param(searchParams.country);
   const upcoming = param(searchParams.upcoming);
   const sort = param(searchParams.sort) || "newest";
   const page = Math.max(1, Number(param(searchParams.page)) || 1);
 
-  const [result, genres, categories] = await Promise.all([
-    browseMovies({ q, type, genre, category, year, upcoming, sort, page }),
+  const [result, genres, categories, countries] = await Promise.all([
+    browseMovies({
+      q,
+      type,
+      genre,
+      category,
+      year,
+      country,
+      upcoming,
+      sort,
+      page,
+    }),
     getGenres(),
     getCategories(),
+    getMovieCountries(),
   ]);
 
   const activeGenre = genre ? genres.find((item) => item.slug === genre) : null;
@@ -59,23 +72,27 @@ export async function BrowseView({
     (upcoming === "1"
       ? "Upcoming"
       : activeGenre?.name ||
-        currentCategory?.name ||
-        (type === "series"
-          ? "Series"
-          : type === "movie"
-            ? "Movies"
-            : "All titles"));
+        (country
+          ? `${country} titles`
+          : currentCategory?.name ||
+            (type === "series"
+              ? "Series"
+              : type === "movie"
+                ? "Movies"
+                : "All titles")));
 
   const subtitle =
     description ||
     (upcoming === "1"
       ? "Titles marked as coming soon on Cinewood."
-      : q
-        ? `Results for “${q}”`
-        : activeGenre
-          ? `Every ${activeGenre.name.toLowerCase()} title in the library.`
-          : currentCategory?.description ||
-            "Browse the complete Cinewood library. Filter by genre, category, year and more.");
+      : country
+        ? `Titles produced in ${country}.`
+        : q
+          ? `Results for “${q}”`
+          : activeGenre
+            ? `Every ${activeGenre.name.toLowerCase()} title in the library.`
+            : currentCategory?.description ||
+              "Browse the complete Cinewood library. Filter by genre, category, year and more.");
 
   const buildHref = (overrides: Record<string, string | null>) => {
     const params = new URLSearchParams();
@@ -84,6 +101,7 @@ export async function BrowseView({
     if (!forcedGenre && genre) params.set("genre", genre);
     if (category) params.set("category", category);
     if (year) params.set("year", year);
+    if (country) params.set("country", country);
     if (upcoming) params.set("upcoming", upcoming);
     if (sort && sort !== "newest") params.set("sort", sort);
     if (page > 1) params.set("page", String(page));
@@ -94,6 +112,43 @@ export async function BrowseView({
     const query = params.toString();
     return query ? `${actionPath}?${query}` : actionPath;
   };
+
+  const activeFilters: { key: string; label: string; clearHref: string }[] = [];
+  if (q) {
+    activeFilters.push({
+      key: "q",
+      label: `Search: ${q}`,
+      clearHref: buildHref({ q: null, page: null }),
+    });
+  }
+  if (category && currentCategory) {
+    activeFilters.push({
+      key: "category",
+      label: currentCategory.name,
+      clearHref: buildHref({ category: null, page: null }),
+    });
+  }
+  if (year) {
+    activeFilters.push({
+      key: "year",
+      label: year,
+      clearHref: buildHref({ year: null, page: null }),
+    });
+  }
+  if (country) {
+    activeFilters.push({
+      key: "country",
+      label: country,
+      clearHref: buildHref({ country: null, page: null }),
+    });
+  }
+  if (upcoming === "1") {
+    activeFilters.push({
+      key: "upcoming",
+      label: "Upcoming only",
+      clearHref: buildHref({ upcoming: null, page: null }),
+    });
+  }
 
   const totalPages = Math.max(1, Math.ceil(result.count / result.perPage));
   const currentYear = new Date().getFullYear();
@@ -175,6 +230,15 @@ export async function BrowseView({
             ))}
           </select>
 
+          <select name="country" defaultValue={country} className="input">
+            <option value="">All countries</option>
+            {countries.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+
           <select name="upcoming" defaultValue={upcoming} className="input">
             <option value="">All releases</option>
             <option value="1">Upcoming only</option>
@@ -222,6 +286,25 @@ export async function BrowseView({
               }`}
             >
               {item.name}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+
+      {activeFilters.length > 0 ? (
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/35">
+            Active filters
+          </span>
+          {activeFilters.map((filter) => (
+            <Link
+              key={filter.key}
+              href={filter.clearHref}
+              className="badge border-gold/40 bg-gold/10 text-gold transition hover:bg-gold/20"
+              title={`Remove ${filter.label} filter`}
+            >
+              {filter.label}
+              <X size={11} />
             </Link>
           ))}
         </div>

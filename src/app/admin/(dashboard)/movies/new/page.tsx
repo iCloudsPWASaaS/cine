@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { ArrowLeft, Link2, PenLine, Search, Sparkles } from "lucide-react";
-import { importMovieByNameAction } from "@/app/admin/actions/import";
+import { ArrowLeft, PenLine, Sparkles } from "lucide-react";
 import { Flash } from "@/components/admin/flash";
+import { ImportForm } from "@/components/admin/import-form";
 import { MovieForm } from "@/components/admin/movie-form";
-import { SubmitButton } from "@/components/admin/submit-button";
 import {
   getCategories,
   getGenres,
@@ -91,42 +90,7 @@ export default async function NewMoviePage({
         </div>
 
         <div className="p-5 sm:p-6">
-          <form
-            action={importMovieByNameAction}
-            className="grid gap-3 lg:grid-cols-[1fr_1.2fr_auto]"
-          >
-            <div className="relative">
-              <Search
-                size={17}
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/35"
-              />
-              <input
-                name="query"
-                required
-                disabled={!tmdbReady}
-                placeholder="Movie or series title, e.g. Heartland…"
-                className="input h-12 pl-11"
-              />
-            </div>
-            <div className="relative">
-              <Link2
-                size={17}
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/35"
-              />
-              <input
-                name="source_input"
-                disabled={!tmdbReady}
-                placeholder="Source link (StreamWish, FileMoon, DoodStream, VidHide, .m3u8 or page URL)…"
-                className="input h-12 pl-11"
-              />
-            </div>
-            <SubmitButton
-              className="btn-gold h-12 shrink-0"
-              pendingText="Importing…"
-            >
-              <Search size={16} /> Search &amp; grab
-            </SubmitButton>
-          </form>
+          <ImportForm disabled={!tmdbReady} />
 
           <p className="mt-2 text-[11px] text-white/30">
             Exact title matches are preferred; otherwise the top TMDB result is

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  Clapperboard,
+  ChartColumn,
   ExternalLink,
   Film,
   FolderOpen,
@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { logoutAction } from "@/app/admin/actions/auth";
+import { BrandLogo } from "@/components/site/brand-logo";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -25,6 +26,7 @@ const nav = [
   { href: "/admin/categories", label: "Categories", icon: FolderOpen },
   { href: "/admin/genres", label: "Genres", icon: Tags },
   { href: "/admin/sources", label: "Sources", icon: Server },
+  { href: "/admin/reports", label: "Reports", icon: ChartColumn },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -48,10 +50,7 @@ export function AdminShell({ children, email, displayName }: AdminShellProps) {
   const sidebar = (
     <div className="flex h-full flex-col">
       <Link href="/admin" className="flex items-center gap-2.5 px-5 py-5">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-gold text-black">
-          <Clapperboard size={18} strokeWidth={2.4} />
-        </span>
-        <span className="display text-2xl tracking-[0.08em]">CINEWOOD</span>
+        <BrandLogo className="h-9" />
         <span className="ml-auto rounded-md border border-gold/30 bg-gold/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-gold">
           Admin
         </span>
@@ -127,7 +126,7 @@ export function AdminShell({ children, email, displayName }: AdminShellProps) {
         >
           <Menu size={18} />
         </button>
-        <span className="display text-2xl tracking-[0.08em]">CINEWOOD</span>
+        <BrandLogo className="h-9" />
         <span className="ml-auto rounded-md border border-gold/30 bg-gold/10 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-gold">
           Admin
         </span>

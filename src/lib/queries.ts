@@ -148,6 +148,20 @@ export async function getTrending(limit = 12): Promise<Movie[]> {
   return (data || []) as unknown as Movie[];
 }
 
+export async function getUpcoming(limit = 12): Promise<Movie[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("movies")
+    .select(CARD_FIELDS)
+    .eq("published", true)
+    .eq("upcoming", true)
+    .order("release_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return (data || []) as unknown as Movie[];
+}
+
 export async function getLatest(limit = 12): Promise<Movie[]> {
   const supabase = createAdminClient();
   const { data } = await supabase
@@ -320,6 +334,7 @@ export async function browseMovies(
 
   if (restrictedIds) query = query.in("id", restrictedIds);
   if (categoryId) query = query.eq("category_id", categoryId);
+  if (filters.upcoming === "1") query = query.eq("upcoming", true);
   if (filters.type === "movie" || filters.type === "series") {
     query = query.eq("type", filters.type);
   }
@@ -379,8 +394,16 @@ export async function browseMovies(
 
 export async function getAdminStats() {
   const supabase = createAdminClient();
-  const [movies, published, categories, genres, sources, profiles, recent] =
-    await Promise.all([
+  const [
+    movies,
+    published,
+    categories,
+    genres,
+    sources,
+    profiles,
+    viewCounts,
+    recent,
+  ] = await Promise.all([
       supabase.from("movies").select("id", { count: "exact", head: true }),
       supabase
         .from("movies")
@@ -390,6 +413,7 @@ export async function getAdminStats() {
       supabase.from("genres").select("id", { count: "exact", head: true }),
       supabase.from("sources").select("id", { count: "exact", head: true }),
       supabase.from("profiles").select("id", { count: "exact", head: true }),
+      supabase.from("movies").select("view_count").limit(5000),
       supabase
         .from("movies")
         .select("id, slug, title, poster_url, type, published, created_at")
@@ -404,7 +428,155 @@ export async function getAdminStats() {
     genres: genres.count || 0,
     sources: sources.count || 0,
     profiles: profiles.count || 0,
+    views: (viewCounts.data || []).reduce(
+      (sum, row) => sum + Number(row.view_count || 0),
+      0,
+    ),
     recent: recent.data || [],
+  };
+}
+
+export interface ViewReportMovie {
+  id: string;
+  title: string;
+  slug: string;
+  poster_url: string | null;
+  type: string;
+  view_count: number;
+  published: boolean;
+  featured: boolean;
+  trending: boolean;
+  upcoming: boolean;
+  category: { name: string } | null;
+  recentViews: number;
+}
+
+export interface ViewReportData {
+  totalViews: number;
+  views7Days: number;
+  views30Days: number;
+  viewedTitles: number;
+  averageViews: number;
+  topMovie: ViewReportMovie | null;
+  movies: ViewReportMovie[];
+  daily: { date: string; label: string; count: number }[];
+  byType: { label: string; count: number }[];
+  byCategory: { label: string; count: number }[];
+  flags: { label: string; count: number }[];
+}
+
+export async function getViewReport(): Promise<ViewReportData> {
+  const supabase = createAdminClient();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const now = new Date();
+  const since7 = new Date(now.getTime() - 7 * dayMs);
+  const since30 = new Date(now.getTime() - 30 * dayMs);
+
+  const [moviesResult, eventsResult, upcomingResult] = await Promise.all([
+    supabase
+      .from("movies")
+      .select(
+        "id, title, slug, poster_url, type, view_count, published, featured, trending, category:categories(name)",
+      )
+      .order("view_count", { ascending: false })
+      .limit(5000),
+    supabase
+      .from("movie_view_events")
+      .select("movie_id, viewed_at")
+      .gte("viewed_at", since30.toISOString())
+      .order("viewed_at", { ascending: false })
+      .limit(20000),
+    supabase.from("movies").select("id").eq("upcoming", true).limit(5000),
+  ]);
+
+  const upcomingIds = new Set(
+    (upcomingResult.data || []).map((row) => row.id as string),
+  );
+  type ReportRow = Omit<ViewReportMovie, "recentViews">;
+  const movies = ((moviesResult.data || []) as unknown as ReportRow[]).map(
+    (movie) => ({ ...movie, upcoming: upcomingIds.has(movie.id) }),
+  );
+  const events = eventsResult.data || [];
+
+  const recentByMovie = new Map<string, number>();
+  const dailyCounts = new Map<string, number>();
+  let views7Days = 0;
+
+  for (const event of events) {
+    const viewedAt = new Date(event.viewed_at);
+    const day = viewedAt.toISOString().slice(0, 10);
+    dailyCounts.set(day, (dailyCounts.get(day) || 0) + 1);
+    if (viewedAt >= since7) {
+      views7Days += 1;
+      recentByMovie.set(
+        event.movie_id,
+        (recentByMovie.get(event.movie_id) || 0) + 1,
+      );
+    }
+  }
+
+  const rows: ViewReportMovie[] = movies.map((movie) => ({
+    ...movie,
+    recentViews: recentByMovie.get(movie.id) || 0,
+  }));
+
+  const totalViews = rows.reduce(
+    (sum, movie) => sum + Number(movie.view_count || 0),
+    0,
+  );
+  const typeTotals = new Map<string, number>();
+  const categoryTotals = new Map<string, number>();
+  const flagTotals = new Map<string, number>();
+
+  for (const movie of rows) {
+    const views = Number(movie.view_count || 0);
+    const type = movie.type === "series" ? "Series" : "Movies";
+    typeTotals.set(type, (typeTotals.get(type) || 0) + views);
+    const category = movie.category?.name || "Uncategorised";
+    categoryTotals.set(category, (categoryTotals.get(category) || 0) + views);
+    if (movie.featured) {
+      flagTotals.set("Featured", (flagTotals.get("Featured") || 0) + views);
+    }
+    if (movie.trending) {
+      flagTotals.set("Trending", (flagTotals.get("Trending") || 0) + views);
+    }
+    if (movie.upcoming) {
+      flagTotals.set("Upcoming", (flagTotals.get("Upcoming") || 0) + views);
+    }
+  }
+
+  const daily = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(now.getTime() - (6 - index) * dayMs)
+      .toISOString()
+      .slice(0, 10);
+    return {
+      date,
+      label: new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
+        weekday: "short",
+        timeZone: "UTC",
+      }),
+      count: dailyCounts.get(date) || 0,
+    };
+  });
+
+  const toBreakdown = (map: Map<string, number>) =>
+    Array.from(map, ([label, count]) => ({ label, count })).sort(
+      (a, b) => b.count - a.count,
+    );
+
+  return {
+    totalViews,
+    views7Days,
+    views30Days: events.length,
+    viewedTitles: rows.filter((movie) => Number(movie.view_count || 0) > 0)
+      .length,
+    averageViews: rows.length > 0 ? Math.round(totalViews / rows.length) : 0,
+    topMovie: rows[0] && Number(rows[0].view_count || 0) > 0 ? rows[0] : null,
+    movies: rows,
+    daily,
+    byType: toBreakdown(typeTotals),
+    byCategory: toBreakdown(categoryTotals),
+    flags: toBreakdown(flagTotals),
   };
 }
 
@@ -433,10 +605,20 @@ export async function getAdminMovies(filters: {
     .order("created_at", { ascending: false })
     .range((page - 1) * perPage, page * perPage - 1);
 
-  const { data, count } = await query;
+  const [result, upcomingResult] = await Promise.all([
+    query,
+    supabase.from("movies").select("id").eq("upcoming", true).limit(5000),
+  ]);
+  const upcomingIds = new Set(
+    (upcomingResult.data || []).map((row) => row.id as string),
+  );
+
   return {
-    movies: (data || []) as unknown as Movie[],
-    count: count || 0,
+    movies: ((result.data || []) as unknown as Movie[]).map((movie) => ({
+      ...movie,
+      upcoming: upcomingIds.has(movie.id),
+    })),
+    count: result.count || 0,
     page,
     perPage,
   };

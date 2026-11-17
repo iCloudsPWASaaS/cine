@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { Clapperboard, Lock, Mail, ShieldCheck } from "lucide-react";
+import { Lock, Mail, ShieldCheck } from "lucide-react";
 import { loginAction, type LoginState } from "@/app/admin/actions/auth";
+import { BrandLogo } from "@/components/site/brand-logo";
 
 export function LoginForm({ initialError }: { initialError?: string }) {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(
@@ -14,11 +15,8 @@ export function LoginForm({ initialError }: { initialError?: string }) {
 
   return (
     <div className="w-full max-w-md">
-      <Link href="/" className="mb-8 flex items-center justify-center gap-2.5">
-        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gold text-black shadow-[0_12px_40px_-10px_rgba(242,200,107,0.8)]">
-          <Clapperboard size={22} strokeWidth={2.4} />
-        </span>
-        <span className="display text-[30px] tracking-[0.08em]">CINEWOOD</span>
+      <Link href="/" className="mb-8 flex items-center justify-center">
+        <BrandLogo className="h-12" priority />
       </Link>
 
       <div className="rounded-3xl border border-white/10 bg-panel/80 p-7 shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:p-8">

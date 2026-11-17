@@ -40,6 +40,7 @@ export interface Movie {
   category_id: string | null;
   featured: boolean;
   trending: boolean;
+  upcoming?: boolean;
   published: boolean;
   view_count: number;
   metadata: MovieMetadata;
@@ -140,6 +141,7 @@ export interface BrowseFilters {
   genre?: string;
   category?: string;
   year?: string;
+  upcoming?: string;
   sort?: string;
   page?: number;
 }

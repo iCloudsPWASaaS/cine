@@ -14,6 +14,8 @@ interface ImportInput {
   mediaType: "movie" | "tv";
   categoryId?: string | null;
   region?: string;
+  year?: string | null;
+  country?: string | null;
 }
 
 async function uniqueSlug(base: string, mediaType: string, tmdbId: number) {
@@ -156,8 +158,12 @@ export async function importMovieFromTmdb(input: ImportInput) {
   const originalTitle =
     (mediaType === "tv" ? details.original_name : details.original_title) ||
     title;
-  const releaseDate =
+  const tmdbReleaseDate =
     (mediaType === "tv" ? details.first_air_date : details.release_date) || null;
+  const year = /^\d{4}$/.test(input.year || "") ? input.year! : null;
+  const releaseDate = year
+    ? `${year}${tmdbReleaseDate?.slice(4) || "-01-01"}`
+    : tmdbReleaseDate;
   const trailer = pickTmdbTrailer(details);
   const trailerUrl = trailer
     ? `https://www.youtube.com/embed/${trailer.key}`
@@ -188,6 +194,13 @@ export async function importMovieFromTmdb(input: ImportInput) {
     details.credits?.crew?.find((member) => member.job === "Director")?.name ||
     null;
 
+  const tmdbCountries = (details.production_countries || [])
+    .map((country) => country.name)
+    .filter(Boolean);
+  const countries = input.country
+    ? [input.country, ...tmdbCountries.filter((item) => item !== input.country)]
+    : tmdbCountries;
+
   const metadata = {
     tmdb_id: tmdbId,
     media_type: mediaType,
@@ -204,9 +217,8 @@ export async function importMovieFromTmdb(input: ImportInput) {
     production_companies: (details.production_companies || [])
       .map((company) => company.name)
       .slice(0, 6),
-    countries: (details.production_countries || []).map(
-      (country) => country.name,
-    ),
+    country: countries[0] || null,
+    countries,
     languages: (details.spoken_languages || [])
       .map((language) => language.english_name || language.name)
       .filter(Boolean),

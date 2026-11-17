@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Clapperboard, Shield } from "lucide-react";
+import { Shield } from "lucide-react";
+import { BrandLogo } from "@/components/site/brand-logo";
 import type { Genre, SiteSettings } from "@/lib/types";
 
 interface FooterProps {
@@ -12,13 +13,11 @@ export function Footer({ settings, genres }: FooterProps) {
     <footer className="mt-14 border-t border-white/10 bg-black/30 sm:mt-24">
       <div className="container-page grid gap-8 py-10 sm:gap-10 sm:py-14 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gold text-black">
-              <Clapperboard size={19} strokeWidth={2.4} />
-            </span>
-            <span className="display text-[26px] tracking-[0.08em]">
-              {settings.logo_text || settings.name.toUpperCase()}
-            </span>
+          <Link href="/" className="inline-flex items-center">
+            <BrandLogo
+              label={settings.logo_text || settings.name}
+              className="h-10"
+            />
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/50">
             {settings.description}

@@ -3,14 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  ChevronDown,
-  Clapperboard,
-  Menu,
-  Search,
-  Shield,
-  X,
-} from "lucide-react";
+import { ChevronDown, Menu, Search, Shield, X } from "lucide-react";
+import { BrandLogo } from "@/components/site/brand-logo";
 import { cn } from "@/lib/utils";
 
 interface HeaderProps {
@@ -55,13 +49,12 @@ export function Header({ siteName, logoText, genres }: HeaderProps) {
       )}
     >
       <div className="container-page flex h-16 items-center gap-3 sm:h-[72px] sm:gap-4">
-        <Link href="/" className="group flex shrink-0 items-center gap-2 sm:gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-xl bg-gold text-black shadow-[0_8px_30px_-10px_rgba(242,200,107,0.8)] transition group-hover:rotate-6 sm:h-9 sm:w-9">
-            <Clapperboard size={18} strokeWidth={2.4} />
-          </span>
-          <span className="display text-[22px] leading-none tracking-[0.08em] text-white sm:text-[26px]">
-            {logoText || siteName.toUpperCase()}
-          </span>
+        <Link href="/" className="flex shrink-0 items-center">
+          <BrandLogo
+            label={logoText || siteName}
+            className="h-9 transition hover:brightness-95 sm:h-10"
+            priority
+          />
         </Link>
 
         <nav className="ml-6 hidden items-center gap-1 lg:flex">
@@ -189,10 +182,8 @@ export function Header({ siteName, logoText, genres }: HeaderProps) {
             aria-label="Close menu"
           />
           <div className="absolute right-0 top-0 flex h-full w-[86%] max-w-sm flex-col overflow-y-auto border-l border-white/10 bg-ink-soft p-5">
-            <div className="mb-6 flex items-center justify-between">
-              <span className="display text-2xl tracking-[0.08em]">
-                {logoText || "CINEWOOD"}
-              </span>
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <BrandLogo label={logoText || siteName} className="h-10" />
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}

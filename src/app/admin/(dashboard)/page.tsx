@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  ChartColumn,
   Database,
   Eye,
   Film,
@@ -34,6 +35,7 @@ const statCards = [
     href: "/admin/categories",
   },
   { key: "genres", label: "Genres", icon: Tags, href: "/admin/genres" },
+  { key: "views", label: "Total views", icon: ChartColumn, href: "/admin/reports" },
   { key: "sources", label: "Sources", icon: Server, href: "/admin/sources" },
   { key: "profiles", label: "Accounts", icon: Users, href: "/admin/settings" },
 ] as const;

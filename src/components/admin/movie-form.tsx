@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  CalendarClock,
   CalendarDays,
   Film,
   Image as ImageIcon,
@@ -286,7 +287,7 @@ export function MovieForm({
         <h2 className="flex items-center gap-2 text-sm font-extrabold">
           <Star size={16} className="text-gold" /> Visibility
         </h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
             <input
               type="checkbox"
@@ -326,6 +327,26 @@ export function MovieForm({
               <span className="block text-sm font-semibold">Trending</span>
               <span className="text-[11px] text-white/35">
                 Included in Trending Now.
+              </span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <input
+              type="checkbox"
+              name="upcoming"
+              defaultChecked={movie?.upcoming || false}
+              className="mt-0.5 h-4 w-4 accent-[#f2c86b]"
+            />
+            <span>
+              <span className="block text-sm font-semibold">
+                <CalendarClock
+                  size={13}
+                  className="mr-1 inline-block align-[-2px] text-gold"
+                />
+                Upcoming
+              </span>
+              <span className="text-[11px] text-white/35">
+                Shown in the Upcoming row on the homepage.
               </span>
             </span>
           </label>

@@ -37,11 +37,12 @@ export async function BrowseView({
   const genre = forcedGenre || param(searchParams.genre);
   const category = param(searchParams.category);
   const year = param(searchParams.year);
+  const upcoming = param(searchParams.upcoming);
   const sort = param(searchParams.sort) || "newest";
   const page = Math.max(1, Number(param(searchParams.page)) || 1);
 
   const [result, genres, categories] = await Promise.all([
-    browseMovies({ q, type, genre, category, year, sort, page }),
+    browseMovies({ q, type, genre, category, year, upcoming, sort, page }),
     getGenres(),
     getCategories(),
   ]);
@@ -55,18 +56,26 @@ export async function BrowseView({
 
   const title =
     heading ||
-    activeGenre?.name ||
-    currentCategory?.name ||
-    (type === "series" ? "Series" : type === "movie" ? "Movies" : "All titles");
+    (upcoming === "1"
+      ? "Upcoming"
+      : activeGenre?.name ||
+        currentCategory?.name ||
+        (type === "series"
+          ? "Series"
+          : type === "movie"
+            ? "Movies"
+            : "All titles"));
 
   const subtitle =
     description ||
-    (q
-      ? `Results for “${q}”`
-      : activeGenre
-        ? `Every ${activeGenre.name.toLowerCase()} title in the library.`
-        : currentCategory?.description ||
-          "Browse the complete Cinewood library. Filter by genre, category, year and more.");
+    (upcoming === "1"
+      ? "Titles marked as coming soon on Cinewood."
+      : q
+        ? `Results for “${q}”`
+        : activeGenre
+          ? `Every ${activeGenre.name.toLowerCase()} title in the library.`
+          : currentCategory?.description ||
+            "Browse the complete Cinewood library. Filter by genre, category, year and more.");
 
   const buildHref = (overrides: Record<string, string | null>) => {
     const params = new URLSearchParams();
@@ -75,6 +84,7 @@ export async function BrowseView({
     if (!forcedGenre && genre) params.set("genre", genre);
     if (category) params.set("category", category);
     if (year) params.set("year", year);
+    if (upcoming) params.set("upcoming", upcoming);
     if (sort && sort !== "newest") params.set("sort", sort);
     if (page > 1) params.set("page", String(page));
     for (const [key, value] of Object.entries(overrides)) {
@@ -163,6 +173,11 @@ export async function BrowseView({
                 {value}
               </option>
             ))}
+          </select>
+
+          <select name="upcoming" defaultValue={upcoming} className="input">
+            <option value="">All releases</option>
+            <option value="1">Upcoming only</option>
           </select>
 
           <select name="sort" defaultValue={sort} className="input">

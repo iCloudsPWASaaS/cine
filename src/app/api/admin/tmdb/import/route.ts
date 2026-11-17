@@ -24,6 +24,8 @@ export async function POST(request: Request) {
       mediaType?: "movie" | "tv";
       categoryId?: string | null;
       region?: string;
+      year?: string | null;
+      country?: string | null;
     };
 
     if (
@@ -42,6 +44,8 @@ export async function POST(request: Request) {
       mediaType: body.mediaType,
       categoryId: body.categoryId || null,
       region: body.region,
+      year: body.year,
+      country: body.country,
     });
 
     return Response.json(result);

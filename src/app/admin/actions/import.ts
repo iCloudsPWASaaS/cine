@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { importMovieFromTmdb } from "@/lib/import";
 import { grabAndSaveMovieSources } from "@/lib/source-grabber";
-import { searchTmdb, tmdbConfigured } from "@/lib/tmdb";
+import { pickTmdbResult, searchTmdb, tmdbConfigured } from "@/lib/tmdb";
 import type { TmdbSearchResult } from "@/lib/types";
 
 const back = "/admin/movies/new";
@@ -14,18 +14,14 @@ function fail(message: string): never {
   redirect(`${back}?error=${encodeURIComponent(message)}`);
 }
 
-function normalize(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
 export async function importMovieByNameAction(formData: FormData) {
   await requireAdmin();
 
   const query = String(formData.get("query") || "").trim();
   const sourceInput = String(formData.get("source_input") || "").trim();
+  const rawYear = String(formData.get("year") || "").trim();
+  const year = /^\d{4}$/.test(rawYear) ? rawYear : null;
+  const country = String(formData.get("country") || "").trim() || null;
   if (!query) fail("Enter a movie or series name.");
 
   if (!tmdbConfigured()) {
@@ -47,16 +43,16 @@ export async function importMovieByNameAction(formData: FormData) {
     fail(`No TMDB matches found for "${query}". Try the full title or a year.`);
   }
 
-  const exact = results.filter(
-    (item) => normalize(item.title || item.name || "") === normalize(query),
-  );
-  const pick = exact[0] || results[0];
+  const pick = pickTmdbResult(results, query);
+  if (!pick) fail(`No TMDB matches found for "${query}".`);
 
   let saved: { id: string; slug: string; title: string } | null = null;
   try {
     saved = await importMovieFromTmdb({
       tmdbId: pick.id,
       mediaType: pick.media_type,
+      year,
+      country,
     });
   } catch (error) {
     fail(

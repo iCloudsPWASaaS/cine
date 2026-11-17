@@ -133,6 +133,24 @@ export async function searchTmdb(query: string): Promise<TmdbSearchResult[]> {
     .slice(0, 12);
 }
 
+export function pickTmdbResult(
+  results: TmdbSearchResult[],
+  query: string,
+): TmdbSearchResult | null {
+  if (results.length === 0) return null;
+  const normalize = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  const wanted = normalize(query);
+  return (
+    results.find(
+      (item) => normalize(item.title || item.name || "") === wanted,
+    ) || results[0]
+  );
+}
+
 export async function getTmdbDetails(
   mediaType: "movie" | "tv",
   tmdbId: number,

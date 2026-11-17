@@ -46,6 +46,13 @@ async function uniqueSlug(base: string, excludeId?: string) {
   return `${root}-${Date.now().toString(36)}`;
 }
 
+async function hasUpcomingColumn(
+  supabase: ReturnType<typeof createAdminClient>,
+) {
+  const { error } = await supabase.from("movies").select("upcoming").limit(1);
+  return !error;
+}
+
 async function parseMovie(formData: FormData, excludeId?: string) {
   const title = text(formData, "title");
   if (!title) throw new Error("Title is required.");
@@ -75,6 +82,7 @@ async function parseMovie(formData: FormData, excludeId?: string) {
       category_id: text(formData, "category_id") || null,
       featured: formData.get("featured") === "on",
       trending: formData.get("trending") === "on",
+      upcoming: formData.get("upcoming") === "on",
       published: formData.get("published") === "on",
     },
     genreIds: formData
@@ -104,9 +112,13 @@ export async function createMovieAction(formData: FormData) {
   }
 
   const supabase = createAdminClient();
+  const payload = { ...parsed.payload };
+  if (!(await hasUpcomingColumn(supabase))) {
+    delete (payload as { upcoming?: boolean }).upcoming;
+  }
   const { data: saved, error } = await supabase
     .from("movies")
-    .insert({ ...parsed.payload, metadata: { manual: true } })
+    .insert({ ...payload, metadata: { manual: true } })
     .select("id, slug")
     .single();
 
@@ -151,9 +163,13 @@ export async function updateMovieAction(formData: FormData) {
   }
 
   const supabase = createAdminClient();
+  const payload = { ...parsed.payload };
+  if (!(await hasUpcomingColumn(supabase))) {
+    delete (payload as { upcoming?: boolean }).upcoming;
+  }
   const { error } = await supabase
     .from("movies")
-    .update(parsed.payload)
+    .update(payload)
     .eq("id", id);
 
   if (error) fail(back, error.message);
@@ -194,11 +210,14 @@ export async function toggleMovieFieldAction(formData: FormData) {
   const back = redirectTo.startsWith("/admin") ? redirectTo : "/admin/movies";
 
   if (!id) fail(back, "Missing movie id.");
-  if (!["published", "featured", "trending"].includes(field)) {
+  if (!["published", "featured", "trending", "upcoming"].includes(field)) {
     fail(back, "Invalid field.");
   }
 
   const supabase = createAdminClient();
+  if (field === "upcoming" && !(await hasUpcomingColumn(supabase))) {
+    fail(back, "Run the database setup to enable upcoming titles.");
+  }
   const { error } = await supabase
     .from("movies")
     .update({ [field]: value })

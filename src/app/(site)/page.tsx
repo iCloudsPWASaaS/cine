@@ -8,15 +8,17 @@ import {
   getLatest,
   getTopRated,
   getTrending,
+  getUpcoming,
 } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [featured, trending, latest, topRated, categoryRows] =
+  const [featured, trending, upcoming, latest, topRated, categoryRows] =
     await Promise.all([
       getFeatured(5),
       getTrending(12),
+      getUpcoming(12),
       getLatest(12),
       getTopRated(12),
       getCategoriesWithMovies(12),
@@ -55,6 +57,13 @@ export default async function HomePage() {
           movies={trending.length > 0 ? trending : latest}
           href="/movies?sort=newest"
           ranked
+        />
+
+        <MovieRow
+          title="Upcoming"
+          eyebrow="Coming soon"
+          movies={upcoming}
+          href="/movies?upcoming=1"
         />
 
         <MovieRow

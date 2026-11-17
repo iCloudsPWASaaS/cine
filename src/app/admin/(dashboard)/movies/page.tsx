@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  CalendarClock,
   Eye,
   Pencil,
   Plus,
@@ -171,7 +172,15 @@ export default async function AdminMoviesPage({
                           T
                         </span>
                       ) : null}
-                      {!movie.featured && !movie.trending ? (
+                      {movie.upcoming ? (
+                        <span
+                          className="badge border-violet-400/25 text-violet-300"
+                          title="Upcoming"
+                        >
+                          <CalendarClock size={10} /> U
+                        </span>
+                      ) : null}
+                      {!movie.featured && !movie.trending && !movie.upcoming ? (
                         <span className="text-xs text-white/20">—</span>
                       ) : null}
                     </div>

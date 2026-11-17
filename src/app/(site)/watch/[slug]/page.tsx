@@ -330,12 +330,6 @@ export default async function WatchPage({ params }: WatchPageProps) {
               </div>
             ) : null}
 
-            <p className="mt-6 rounded-xl border border-white/[0.07] bg-white/[0.02] p-4 text-[11px] leading-relaxed text-white/30">
-              Cinewood is a discovery and playback interface. Titles are played
-              from sources configured by the administrator. Only add or publish
-              content you have the rights to distribute. Open-licence demo films
-              are credited to the Blender Foundation.
-            </p>
           </section>
 
           {cast.length > 0 ? (

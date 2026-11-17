@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Clapperboard, Sparkles } from "lucide-react";
+import { ArrowRight, Clapperboard } from "lucide-react";
 import { LatestCarousel } from "@/components/site/latest-carousel";
 import { MovieRow } from "@/components/site/movie-row";
 import {
@@ -72,31 +72,6 @@ export default async function HomePage() {
           movies={latest}
           href="/movies?sort=newest"
         />
-
-        <section className="relative overflow-hidden rounded-2xl border border-gold/20 bg-gradient-to-br from-gold/[0.14] via-white/[0.03] to-transparent p-5 sm:rounded-3xl sm:p-10">
-          <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-gold/10 blur-3xl" />
-          <div className="relative z-10 flex flex-col items-start justify-between gap-5 lg:flex-row lg:items-center">
-            <div className="max-w-2xl">
-              <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-gold sm:text-[11px]">
-                <Sparkles size={14} /> The Cinewood promise
-              </p>
-              <h2 className="display mt-2.5 text-3xl leading-none sm:mt-3 sm:text-5xl">
-                One home. Every story.
-              </h2>
-              <p className="mt-2.5 max-w-xl text-xs leading-relaxed text-white/55 sm:mt-3 sm:text-sm">
-                Rich metadata, beautiful presentation and a player built for
-                real viewing. Import a title by name and Cinewood organises the
-                details, artwork, genres and available legal sources.
-              </p>
-            </div>
-            <Link
-              href="/movies"
-              className="btn-gold w-full shrink-0 justify-center !px-6 !py-3 sm:w-auto sm:!px-7"
-            >
-              Explore the library <ArrowRight size={16} />
-            </Link>
-          </div>
-        </section>
 
         {categoryRows.map(({ category, movies }) => (
           <MovieRow

@@ -1,0 +1,243 @@
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700;800&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #06070b;
+  --color-ink-soft: #0b0d14;
+  --color-panel: #11141d;
+  --color-line: #242938;
+  --color-gold: #f2c86b;
+  --color-gold-soft: #ffe4a6;
+  --color-ember: #e4572e;
+  --color-mist: #98a1b2;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --font-display: "Bebas Neue", "Arial Narrow", Impact, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(242, 200, 107, 0.08), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(228, 87, 46, 0.06), transparent 55%),
+    var(--color-ink);
+  color: #f5f6f8;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-gold);
+  color: #101010;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #08090d;
+}
+::-webkit-scrollbar-thumb {
+  background: #262b39;
+  border-radius: 999px;
+  border: 2px solid #08090d;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a4154;
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-[1480px] px-4 sm:px-6 lg:px-10;
+  }
+
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition duration-200 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-gold {
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition duration-200 disabled:cursor-not-allowed disabled:opacity-50 bg-gold text-[#141005] shadow-[0_10px_40px_-12px_rgba(242,200,107,0.65)] hover:bg-gold-soft hover:shadow-[0_14px_46px_-10px_rgba(242,200,107,0.8)];
+  }
+
+  .btn-ghost {
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition duration-200 disabled:cursor-not-allowed disabled:opacity-50 border border-white/15 bg-white/5 text-white backdrop-blur hover:border-white/30 hover:bg-white/10;
+  }
+
+  .btn-dark {
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition duration-200 disabled:cursor-not-allowed disabled:opacity-50 bg-white/10 text-white hover:bg-white/15;
+  }
+
+  .btn-danger {
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition duration-200 disabled:cursor-not-allowed disabled:opacity-50 border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-white/10 bg-white/[0.045] px-4 py-2.5 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-gold/60 focus:bg-white/[0.07];
+  }
+
+  .label {
+    @apply mb-1.5 block text-[11px] font-bold uppercase tracking-[0.18em] text-white/45;
+  }
+
+  .card {
+    @apply rounded-2xl border border-white/10 bg-white/[0.035];
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[11px] font-bold tracking-wide;
+  }
+
+  .admin-card {
+    @apply rounded-2xl border border-white/10 bg-panel/70 backdrop-blur;
+  }
+
+  .admin-table {
+    @apply w-full border-collapse text-left text-sm;
+  }
+
+  .admin-table th {
+    @apply border-b border-white/10 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-white/40;
+  }
+
+  .admin-table td {
+    @apply border-b border-white/[0.06] px-4 py-3 align-middle;
+  }
+
+  .admin-table tr:last-child td {
+    @apply border-b-0;
+  }
+}
+
+@utility no-scrollbar {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.text-stroke {
+  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.35);
+  color: transparent;
+}
+
+.hero-title {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+  line-height: 0.92;
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+.gold-text {
+  background: linear-gradient(120deg, #fff1c7 0%, #f2c86b 45%, #c99738 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero-overlay {
+  background:
+    linear-gradient(90deg, rgba(6, 7, 11, 0.96) 0%, rgba(6, 7, 11, 0.7) 45%, rgba(6, 7, 11, 0.15) 100%),
+    linear-gradient(0deg, var(--color-ink) 2%, rgba(6, 7, 11, 0) 55%);
+}
+
+.card-shine {
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.09) 0%,
+    rgba(255, 255, 255, 0.01) 40%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-soft-pulse {
+  animation: soft-pulse 6s ease-in-out infinite;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.art-video-player {
+  --art-theme: #f2c86b !important;
+  font-family: var(--font-sans) !important;
+}
+
+.art-video-player .art-loading {
+  display: none !important;
+}
+
+.latest-swiper .swiper-slide {
+  height: auto;
+  opacity: 0.62;
+  transition: opacity 0.45s ease;
+}
+
+.latest-swiper .swiper-slide-active {
+  opacity: 1;
+}
+
+.latest-swiper .swiper-slide-active .carousel-card {
+  border-color: rgba(242, 200, 107, 0.45);
+  box-shadow: 0 30px 90px -34px rgba(242, 200, 107, 0.28);
+}
+
+.latest-swiper .swiper-pagination-bullet {
+  width: 7px;
+  height: 7px;
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.32);
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.latest-swiper .swiper-pagination-bullet-active {
+  width: 24px;
+  border-radius: 999px;
+  background: var(--color-gold);
+}

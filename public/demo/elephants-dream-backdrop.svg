@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0c0718"/>
+      <stop offset="0.5" stop-color="#241441"/>
+      <stop offset="1" stop-color="#6a4032"/>
+    </linearGradient>
+    <radialGradient id="core" cx="0.5" cy="0.4" r="0.5">
+      <stop offset="0" stop-color="#ffd08a" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#ffd08a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <rect width="1600" height="900" fill="url(#core)"/>
+  <circle cx="800" cy="380" r="250" fill="none" stroke="#c9a6ff" stroke-width="4" opacity="0.6"/>
+  <circle cx="800" cy="380" r="180" fill="none" stroke="#ffce8f" stroke-width="10" opacity="0.8"/>
+  <circle cx="800" cy="380" r="80" fill="#ffce8f" opacity="0.95"/>
+  <g stroke="#bda3ef" stroke-width="2" opacity="0.4">
+    <circle cx="800" cy="380" r="310"/>
+    <circle cx="800" cy="380" r="370"/>
+    <path d="M300 380 h1000 M800 40 v680"/>
+    <path d="M430 130 L1170 630 M1170 130 L430 630"/>
+    <path d="M520 60 L1080 700 M1080 60 L520 700"/>
+  </g>
+  <g fill="#100a1e" opacity="0.95">
+    <rect x="90" y="470" width="220" height="430" rx="20" transform="rotate(-3 90 470)"/>
+    <rect x="350" y="560" width="170" height="340" rx="18" transform="rotate(2 350 560)"/>
+    <rect x="1110" y="500" width="200" height="400" rx="18" transform="rotate(3 1110 500)"/>
+    <rect x="1360" y="600" width="160" height="300" rx="18" transform="rotate(-2 1360 600)"/>
+  </g>
+  <g fill="#c9a6ff" opacity="0.35">
+    <rect x="130" y="540" width="120" height="5"/>
+    <rect x="130" y="560" width="80" height="5"/>
+    <rect x="1160" y="560" width="100" height="5"/>
+    <rect x="1160" y="580" width="60" height="5"/>
+  </g>
+  <rect width="1600" height="900" fill="#05030a" opacity="0.2"/>
+</svg>

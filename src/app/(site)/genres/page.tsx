@@ -1,0 +1,66 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowUpRight, Hash } from "lucide-react";
+import { getGenresWithCounts } from "@/lib/queries";
+
+export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Genres",
+  description: "Explore Cinewood by genre.",
+};
+
+const accents = [
+  "from-amber-500/20",
+  "from-rose-500/20",
+  "from-sky-500/20",
+  "from-violet-500/20",
+  "from-emerald-500/20",
+  "from-orange-500/20",
+];
+
+export default async function GenresPage() {
+  const genres = await getGenresWithCounts();
+
+  return (
+    <div className="container-page pb-20 pt-[112px]">
+      <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-gold">
+        Discover
+      </p>
+      <h1 className="hero-title mt-2 text-7xl">Genres</h1>
+      <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/45">
+        Every story has a shape. Find yours — from pulse-racing thrillers to
+        quiet character dramas.
+      </p>
+
+      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {genres.map((genre, index) => (
+          <Link
+            key={genre.id}
+            href={`/genre/${genre.slug}`}
+            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-gold/30"
+          >
+            <div
+              className={`absolute inset-0 bg-gradient-to-br ${accents[index % accents.length]} via-transparent to-transparent opacity-60 transition group-hover:opacity-100`}
+            />
+            <div className="relative z-10">
+              <div className="flex items-start justify-between">
+                <Hash size={18} className="text-gold/70" />
+                <ArrowUpRight
+                  size={18}
+                  className="text-white/25 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-gold"
+                />
+              </div>
+              <h2 className="display mt-10 text-4xl tracking-[0.04em]">
+                {genre.name}
+              </h2>
+              <p className="mt-1 text-xs text-white/40">
+                {genre.count} {genre.count === 1 ? "title" : "titles"}
+              </p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}

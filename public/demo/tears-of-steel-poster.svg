@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="750" viewBox="0 0 500 750">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071c24"/>
+      <stop offset="0.55" stop-color="#124252"/>
+      <stop offset="1" stop-color="#d16a2f"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.72" cy="0.3" r="0.5">
+      <stop offset="0" stop-color="#ffb35c" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#ffb35c" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#030d12" stop-opacity="0"/>
+      <stop offset="1" stop-color="#030d12" stop-opacity="0.97"/>
+    </linearGradient>
+  </defs>
+  <rect width="500" height="750" fill="url(#bg)"/>
+  <rect width="500" height="750" fill="url(#sun)"/>
+  <circle cx="368" cy="220" r="80" fill="#ffc67d" opacity="0.85"/>
+  <g fill="#08212b">
+    <rect x="30" y="360" width="60" height="260"/>
+    <rect x="110" y="300" width="48" height="320"/>
+    <rect x="180" y="400" width="80" height="220"/>
+    <rect x="290" y="340" width="52" height="280"/>
+    <rect x="370" y="410" width="90" height="210"/>
+  </g>
+  <g opacity="0.85">
+    <circle cx="250" cy="330" r="98" fill="none" stroke="#8fe4e8" stroke-width="3"/>
+    <circle cx="250" cy="330" r="66" fill="#0a2a33" stroke="#8fe4e8" stroke-width="5"/>
+    <circle cx="250" cy="330" r="28" fill="#ffb35c"/>
+    <circle cx="250" cy="330" r="10" fill="#071016"/>
+    <path d="M250 232 v-30 M250 458 v-30 M152 330 h-30 M378 330 h-30" stroke="#8fe4e8" stroke-width="4"/>
+  </g>
+  <g fill="#0a1a20" opacity="0.9">
+    <path d="M70 470 q30 -60 60 0 l-10 150 h-40 z"/>
+    <path d="M330 480 q28 -56 56 0 l-9 140 h-38 z"/>
+  </g>
+  <rect y="520" width="500" height="230" fill="url(#shade)"/>
+  <text x="40" y="615" font-family="Arial Narrow, Arial, sans-serif" font-size="58" font-weight="800" fill="#ffffff">TEARS</text>
+  <text x="40" y="669" font-family="Arial Narrow, Arial, sans-serif" font-size="58" font-weight="800" fill="#7fe0e4">OF STEEL</text>
+  <text x="42" y="707" font-family="Arial, sans-serif" font-size="13" letter-spacing="4" fill="#ffd0a0" opacity="0.8">SCI-FI · AMSTERDAM · 2012</text>
+</svg>

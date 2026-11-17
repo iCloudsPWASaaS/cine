@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="750" viewBox="0 0 500 750">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a1526"/>
+      <stop offset="0.55" stop-color="#233a5e"/>
+      <stop offset="1" stop-color="#7c5a53"/>
+    </linearGradient>
+    <radialGradient id="moon" cx="0.25" cy="0.2" r="0.42">
+      <stop offset="0" stop-color="#dbe9ff" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#dbe9ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#050a12" stop-opacity="0"/>
+      <stop offset="1" stop-color="#050a12" stop-opacity="0.97"/>
+    </linearGradient>
+  </defs>
+  <rect width="500" height="750" fill="url(#bg)"/>
+  <rect width="500" height="750" fill="url(#moon)"/>
+  <circle cx="118" cy="150" r="58" fill="#e7f0ff" opacity="0.9"/>
+  <path d="M0 470 L120 300 L230 440 L330 280 L500 470 V750 H0 Z" fill="#16253a"/>
+  <path d="M0 540 L140 400 L260 520 L380 370 L500 530 V750 H0 Z" fill="#0d1726"/>
+  <g>
+    <path d="M300 320 q60 -80 130 -40 q-30 30 -70 34 q50 20 90 -10 q0 90 -80 120 q-50 -20 -70 -104z" fill="#0a111c" opacity="0.9"/>
+    <circle cx="352" cy="354" r="6" fill="#ffcf6b"/>
+  </g>
+  <g>
+    <circle cx="250" cy="500" r="26" fill="#d9c7b4"/>
+    <path d="M224 500 q26 -46 52 0 l-10 110 h-32 z" fill="#2b2a36"/>
+    <path d="M234 470 q16 -20 32 0" stroke="#e8d8c6" stroke-width="8" fill="none"/>
+  </g>
+  <g stroke="#c4d4ea" stroke-width="2" opacity="0.5">
+    <path d="M40 250 L460 250" />
+    <path d="M20 290 L480 290" />
+    <path d="M60 330 L440 330" />
+  </g>
+  <rect y="520" width="500" height="230" fill="url(#shade)"/>
+  <text x="40" y="622" font-family="Arial Narrow, Arial, sans-serif" font-size="76" font-weight="800" fill="#ffffff">SINTEL</text>
+  <text x="42" y="672" font-family="Arial, sans-serif" font-size="13" letter-spacing="4" fill="#cfe0ff" opacity="0.75">A BLENDER FOUNDATION FANTASY · 2010</text>
+  <text x="42" y="706" font-family="Arial, sans-serif" font-size="12" letter-spacing="2" fill="#9db3d4" opacity="0.65">“A JOURNEY ACROSS A DYING WORLD”</text>
+</svg>

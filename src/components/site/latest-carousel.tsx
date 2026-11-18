@@ -25,7 +25,7 @@ export function LatestCarousel({ movies }: { movies: Movie[] }) {
 
   return (
     <section className="relative overflow-hidden pt-[88px] sm:pt-[104px]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1000px_500px_at_15%_0%,rgba(242,200,107,0.09),transparent_60%),radial-gradient(800px_420px_at_100%_20%,rgba(228,87,46,0.07),transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1100px_520px_at_45%_0%,rgba(48,160,185,0.34),transparent_62%),radial-gradient(820px_420px_at_76%_8%,rgba(176,150,126,0.22),transparent_60%),radial-gradient(900px_460px_at_8%_0%,rgba(18,70,90,0.36),transparent_62%),linear-gradient(to_bottom,rgba(12,48,62,0.18),transparent_78%)]" />
 
       <div className="container-page relative">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3 sm:mb-6 sm:gap-4">

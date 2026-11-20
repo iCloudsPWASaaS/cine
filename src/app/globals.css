@@ -204,10 +204,55 @@ body {
 .art-video-player {
   --art-theme: #f2c86b !important;
   font-family: var(--font-sans) !important;
+  width: 100%;
+  height: 100%;
 }
 
 .art-video-player .art-loading {
   display: none !important;
+}
+
+.player-card:fullscreen,
+.player-card:has(:fullscreen),
+.player-card:has(.art-fullscreen),
+.player-card:has(.art-fullscreen-web),
+.player-stage:fullscreen,
+.player-stage:has(:fullscreen) {
+  overflow: visible !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.player-card:fullscreen .player-stage,
+.player-card:has(:fullscreen) .player-stage,
+.player-card:has(.art-fullscreen) .player-stage,
+.player-card:has(.art-fullscreen-web) .player-stage,
+.player-stage:fullscreen {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  aspect-ratio: auto !important;
+}
+
+.art-video-player.art-fullscreen,
+.art-video-player.art-fullscreen-web {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  z-index: 2147483647 !important;
+  background: #000 !important;
+}
+
+.art-video-player:fullscreen,
+.art-video-player:-webkit-full-screen {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
 }
 
 .latest-swiper .swiper-slide {

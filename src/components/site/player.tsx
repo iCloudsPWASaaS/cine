@@ -93,6 +93,13 @@ function NativePlayer({
         airplay: true,
         autoPlayback: true,
         hotkey: true,
+        moreVideoAttr: {
+          playsInline: true,
+          "webkit-playsinline": true,
+          "x5-playsinline": true,
+          "x5-video-player-type": "h5",
+          "x5-video-player-fullscreen": "true",
+        } as any,
         customType: {
           m3u8: (video: HTMLVideoElement, url: string) => {
             if (HlsPlayer.isSupported()) {
@@ -286,8 +293,8 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_40px_120px_-40px_rgba(0,0,0,0.95)] sm:rounded-[26px]">
-      <div className="relative aspect-video w-full bg-black">
+    <div className="player-card overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_40px_120px_-40px_rgba(0,0,0,0.95)] sm:rounded-[26px]">
+      <div className="player-stage relative aspect-video w-full bg-black">
         {!active ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
             <span className="grid h-16 w-16 place-items-center rounded-full border border-white/10 bg-white/5 text-white/40">

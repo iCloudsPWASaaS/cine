@@ -86,7 +86,7 @@ function NativePlayer({
         setting: true,
         playbackRate: true,
         aspectRatio: true,
-        fullscreen: true,
+        fullscreen: false,
         fullscreenWeb: true,
         pip: true,
         miniProgressBar: true,

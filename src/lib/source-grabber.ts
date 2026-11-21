@@ -1,5 +1,9 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import {
+  canonicalLanguage,
+  detectLanguageFromText,
+} from "@/lib/languages";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   getTmdbDetails,
@@ -132,6 +136,20 @@ function normalizeTitleTokens(title: string): string[] {
     .trim()
     .split(/\s+/)
     .filter((token) => token.length >= 3 && !["the", "and", "for", "movie", "part"].includes(token));
+}
+
+function languageFromMetadata(metadata: unknown): string | null {
+  const data = (metadata || {}) as {
+    original_language?: string | null;
+    languages?: string[] | null;
+  };
+  return (
+    canonicalLanguage(data.original_language) ||
+    (data.languages || [])
+      .map((value) => canonicalLanguage(value))
+      .find(Boolean) ||
+    null
+  );
 }
 
 export async function verifySourcePlayable(
@@ -564,6 +582,30 @@ const DEFAULT_REGISTRY_PROVIDERS = [
     is_active: true,
     notes: "VidSrc multi-server backup embed provider.",
   },
+  {
+    name: "Videasy",
+    slug: "videasy",
+    type: "embed" as const,
+    base_url: "https://player.videasy.net",
+    is_active: true,
+    notes: "Videasy 1080p multi-audio embed provider.",
+  },
+  {
+    name: "Embed.su",
+    slug: "embedsu",
+    type: "embed" as const,
+    base_url: "https://embed.su",
+    is_active: true,
+    notes: "Embed.su 1080p HD embed provider.",
+  },
+  {
+    name: "SuperEmbed",
+    slug: "superembed",
+    type: "embed" as const,
+    base_url: "https://superembed.stream",
+    is_active: true,
+    notes: "SuperEmbed multi-server HD embed provider.",
+  },
 ];
 
 export async function ensureDefaultProvidersInRegistry() {
@@ -669,7 +711,7 @@ export async function autoDiscoverSourcesForMovie(
   const supabase = createAdminClient();
   const { data: movie } = await supabase
     .from("movies")
-    .select("id, title, original_title, slug, type, tmdb_id, imdb_id, trailer_url")
+    .select("id, title, original_title, slug, type, tmdb_id, imdb_id, trailer_url, metadata")
     .eq("id", movieId)
     .maybeSingle();
 
@@ -684,6 +726,7 @@ export async function autoDiscoverSourcesForMovie(
 
   let tmdbAbs = movie.tmdb_id ? Math.abs(Number(movie.tmdb_id)) : null;
   const mediaKind = movie.type === "series" ? "tv" : "movie";
+  const detectedLanguage = languageFromMetadata(movie.metadata);
 
   // If movie has no tmdb_id yet, look it up by title on TMDB automatically
   if (!tmdbAbs && tmdbConfigured()) {
@@ -774,6 +817,45 @@ export async function autoDiscoverSourcesForMovie(
         providerName: "NontonGo",
         baseUrl: "https://www.nontongo.win",
       },
+      {
+        label: "Videasy • 1080p Auto",
+        url: isTv
+          ? `https://player.videasy.net/tv/${tmdbAbs}/1/1`
+          : `https://player.videasy.net/movie/${tmdbAbs}`,
+        type: "embed",
+        quality: "1080p",
+        language: null,
+        priority: 27,
+        providerSlug: "videasy",
+        providerName: "Videasy",
+        baseUrl: "https://player.videasy.net",
+      },
+      {
+        label: "Embed.su • 1080p HD",
+        url: isTv
+          ? `https://embed.su/embed/tv/${tmdbAbs}/1/1`
+          : `https://embed.su/embed/movie/${tmdbAbs}`,
+        type: "embed",
+        quality: "1080p",
+        language: null,
+        priority: 26,
+        providerSlug: "embedsu",
+        providerName: "Embed.su",
+        baseUrl: "https://embed.su",
+      },
+      {
+        label: "SuperEmbed • Multi HD",
+        url: isTv
+          ? `https://superembed.stream/v3/embed/tv/?tmdb_id=${tmdbAbs}&s=1&e=1`
+          : `https://superembed.stream/v3/embed/movie/?tmdb_id=${tmdbAbs}`,
+        type: "embed",
+        quality: "HD",
+        language: null,
+        priority: 22,
+        providerSlug: "superembed",
+        providerName: "SuperEmbed",
+        baseUrl: "https://superembed.stream",
+      },
     );
 
     secondarySpaGateways.push(
@@ -828,6 +910,43 @@ export async function autoDiscoverSourcesForMovie(
         providerSlug: "vidsrc",
         providerName: "VidSrc",
         baseUrl: "https://vidsrc.dev",
+      },
+      {
+        label: "VidSrc.To • Multi-Server HD",
+        url: isTv
+          ? `https://vidsrc.to/embed/tv/${tmdbAbs}/1/1`
+          : `https://vidsrc.to/embed/movie/${tmdbAbs}`,
+        type: "embed",
+        quality: "1080p",
+        language: null,
+        priority: 20,
+        providerSlug: "vidsrc",
+        providerName: "VidSrc.To",
+        baseUrl: "https://vidsrc.to",
+      },
+      {
+        label: "StreamWish • Direct HD",
+        url: `https://multiembed.mov/directstream.php?video_id=${tmdbAbs}&tmdb=1`,
+        type: "embed",
+        quality: "HD",
+        language: null,
+        priority: 19,
+        providerSlug: "streamwish",
+        providerName: "StreamWish",
+        baseUrl: "https://multiembed.mov",
+      },
+      {
+        label: "DoodStream • 2Embed Alternate",
+        url: isTv
+          ? `https://www.2embed.to/embed/tmdb/tv?id=${tmdbAbs}&s=1&e=1`
+          : `https://www.2embed.to/embed/tmdb/movie?id=${tmdbAbs}`,
+        type: "embed",
+        quality: "HD",
+        language: null,
+        priority: 18,
+        providerSlug: "doodstream",
+        providerName: "DoodStream",
+        baseUrl: "https://doodstream.com",
       },
     );
   }
@@ -941,12 +1060,9 @@ export async function autoDiscoverSourcesForMovie(
   const validPrimary = verifiedPrimary.filter(
     (item): item is GrabbedSourceItem => Boolean(item),
   );
-  const validSecondary =
-    validPrimary.length > 0
-      ? verifiedSecondary.filter((item): item is GrabbedSourceItem =>
-          Boolean(item),
-        )
-      : [];
+  const validSecondary = verifiedSecondary.filter(
+    (item): item is GrabbedSourceItem => Boolean(item),
+  );
   const validTemplates = verifiedTemplates.filter(
     (item): item is GrabbedSourceItem => Boolean(item),
   );
@@ -957,12 +1073,22 @@ export async function autoDiscoverSourcesForMovie(
     (item): item is GrabbedSourceItem => Boolean(item),
   );
 
+  const withDetectedLanguage = (items: GrabbedSourceItem[]) =>
+    items.map((item) => ({
+      ...item,
+      language:
+        canonicalLanguage(item.language) ||
+        detectLanguageFromText(`${item.label} ${item.url}`) ||
+        detectedLanguage ||
+        null,
+    }));
+
   return [
-    ...validArchive,
-    ...validPrimary,
-    ...validSecondary,
-    ...validTemplates,
-    ...validTrailers,
+    ...withDetectedLanguage(validArchive),
+    ...withDetectedLanguage(validPrimary),
+    ...withDetectedLanguage(validSecondary),
+    ...withDetectedLanguage(validTemplates),
+    ...withDetectedLanguage(validTrailers),
   ];
 }
 
@@ -971,7 +1097,18 @@ export async function grabAndSaveMovieSources(
   rawInput: string,
   options?: { language?: string | null; autoDiscover?: boolean },
 ): Promise<{ count: number; newCount: number; labels: string[] }> {
+  const supabase = createAdminClient();
   const collected: GrabbedSourceItem[] = [];
+
+  let metaLanguage: string | null = null;
+  if (rawInput.trim() && !options?.language) {
+    const { data: movieRow } = await supabase
+      .from("movies")
+      .select("metadata")
+      .eq("id", movieId)
+      .maybeSingle();
+    metaLanguage = languageFromMetadata(movieRow?.metadata);
+  }
 
   if (rawInput.trim()) {
     const fromInput = await grabSourcesFromInput(rawInput);
@@ -1004,7 +1141,6 @@ export async function grabAndSaveMovieSources(
 
   await ensureDefaultProvidersInRegistry();
 
-  const supabase = createAdminClient();
   const [{ data: registryRows }, { data: existingRows }] = await Promise.all([
     supabase.from("sources").select("id, slug"),
     supabase.from("movie_sources").select("id, url").eq("movie_id", movieId),
@@ -1039,7 +1175,12 @@ export async function grabAndSaveMovieSources(
     url: item.url,
     type: item.type,
     quality: item.quality,
-    language: options?.language || item.language || null,
+    language:
+      options?.language ||
+      canonicalLanguage(item.language) ||
+      detectLanguageFromText(`${item.label} ${item.url}`) ||
+      metaLanguage ||
+      null,
     priority: item.priority,
     is_active: true,
   }));

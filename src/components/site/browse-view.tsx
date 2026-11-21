@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Filter, Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { MovieCard } from "@/components/site/movie-card";
 import {
   browseMovies,
@@ -162,10 +162,7 @@ export async function BrowseView({
   return (
     <div className="container-page pb-12 pt-[88px] sm:pb-16 sm:pt-[104px]">
       <div className="mb-6 sm:mb-8">
-        <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-gold">
-          Cinewood library
-        </p>
-        <h1 className="hero-title mt-2 text-4xl text-white sm:text-6xl lg:text-7xl">
+        <h1 className="hero-title text-4xl text-white sm:text-6xl lg:text-7xl">
           {title}
         </h1>
         <p className="mt-2.5 max-w-2xl text-xs leading-relaxed text-white/45 sm:mt-3 sm:text-sm">
@@ -264,9 +261,6 @@ export async function BrowseView({
 
       {!forcedGenre ? (
         <div className="hide-scrollbar -mx-4 mb-6 flex items-center gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:mb-8 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-          <span className="inline-flex shrink-0 items-center gap-1.5 pr-1 text-[11px] font-bold uppercase tracking-[0.16em] text-white/35">
-            <Filter size={12} /> Quick genre
-          </span>
           <Link
             href={buildHref({ genre: null, page: null })}
             className={`badge shrink-0 transition ${

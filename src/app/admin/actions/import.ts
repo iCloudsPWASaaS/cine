@@ -18,7 +18,6 @@ export async function importMovieByNameAction(formData: FormData) {
   await requireAdmin();
 
   const query = String(formData.get("query") || "").trim();
-  const sourceInput = String(formData.get("source_input") || "").trim();
   const rawYear = String(formData.get("year") || "").trim();
   const year = /^\d{4}$/.test(rawYear) ? rawYear : null;
   const country = String(formData.get("country") || "").trim() || null;
@@ -64,7 +63,7 @@ export async function importMovieByNameAction(formData: FormData) {
 
   let grabbedCount = 0;
   try {
-    const grabbed = await grabAndSaveMovieSources(saved.id, sourceInput, {
+    const grabbed = await grabAndSaveMovieSources(saved.id, "", {
       autoDiscover: true,
     });
     grabbedCount = grabbed.count;

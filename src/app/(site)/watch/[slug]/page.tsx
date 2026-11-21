@@ -6,7 +6,6 @@ import {
   CalendarDays,
   Clapperboard,
   Clock3,
-  ExternalLink,
   Eye,
   Film,
   Globe2,
@@ -15,7 +14,6 @@ import {
   ShieldCheck,
   Star,
   Tv,
-  Users,
 } from "lucide-react";
 import { MediaImage } from "@/components/site/media-image";
 import { MovieRow } from "@/components/site/movie-row";
@@ -25,13 +23,11 @@ import {
   getRelatedMovies,
   getSiteSettings,
 } from "@/lib/queries";
-import type { Provider } from "@/lib/types";
 import {
   formatCount,
   formatRating,
   formatRuntime,
   mediaLabel,
-  providerLogo,
   yearOf,
 } from "@/lib/utils";
 
@@ -82,42 +78,6 @@ function DetailRow({
   );
 }
 
-function ProviderGroup({
-  label,
-  providers,
-}: {
-  label: string;
-  providers: Provider[];
-}) {
-  if (!providers || providers.length === 0) return null;
-  return (
-    <div>
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
-        {label}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {providers.map((provider) => (
-          <span
-            key={`${label}-${provider.provider_id}`}
-            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs font-semibold text-white/70"
-            title={provider.provider_name}
-          >
-            <MediaImage
-              src={providerLogo(provider.logo_path)}
-              alt={provider.provider_name}
-              title={provider.provider_name}
-              className="h-6 w-6 rounded-md object-cover"
-            />
-            <span className="max-w-[120px] truncate">
-              {provider.provider_name}
-            </span>
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default async function WatchPage({ params }: WatchPageProps) {
   const { slug } = await params;
   const movie = await getMovieBySlug(slug);
@@ -128,10 +88,6 @@ export default async function WatchPage({ params }: WatchPageProps) {
     getSiteSettings(),
   ]);
 
-  const playableSources = movie.sources.filter(
-    (source) => source.type !== "external",
-  );
-  const providers = movie.metadata?.watch_providers;
   const cast = movie.metadata?.cast || [];
   const rating = formatRating(movie.vote_average);
 
@@ -187,16 +143,6 @@ export default async function WatchPage({ params }: WatchPageProps) {
                   Open licence demo
                 </span>
               ) : null}
-              {playableSources.length > 0 ? (
-                <span className="badge text-emerald-300/80">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  {playableSources.length}{" "}
-                  {playableSources.length === 1 ? "source" : "sources"}
-                </span>
-              ) : null}
-              <span className="badge text-white/45">
-                <ShieldCheck size={11} /> Legal sources
-              </span>
             </div>
 
             <h1 className="hero-title break-words text-4xl text-white sm:text-6xl lg:text-8xl">
@@ -269,16 +215,6 @@ export default async function WatchPage({ params }: WatchPageProps) {
                   className="btn-ghost !px-5 !py-2.5 sm:!px-6 sm:!py-3"
                 >
                   <Film size={15} /> Watch trailer
-                </a>
-              ) : null}
-              {providers?.link ? (
-                <a
-                  href={providers.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-ghost !px-5 !py-2.5 sm:!px-6 sm:!py-3"
-                >
-                  <ExternalLink size={15} /> Where to watch
                 </a>
               ) : null}
             </div>
@@ -431,60 +367,6 @@ export default async function WatchPage({ params }: WatchPageProps) {
                 />
               ) : null}
             </div>
-          </div>
-
-          <div className="card p-5">
-            <h3 className="flex items-center gap-2 text-sm font-extrabold">
-              <Users size={16} className="text-gold" /> Where to watch
-            </h3>
-            {providers &&
-            (providers.flatrate?.length ||
-              providers.rent?.length ||
-              providers.buy?.length) ? (
-              <div className="mt-4 space-y-4">
-                <ProviderGroup label="Stream" providers={providers.flatrate || []} />
-                <ProviderGroup label="Rent" providers={providers.rent || []} />
-                <ProviderGroup label="Buy" providers={providers.buy || []} />
-                {providers.link ? (
-                  <a
-                    href={providers.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-ghost w-full !py-2.5 text-xs"
-                  >
-                    <ExternalLink size={14} /> All options on JustWatch
-                  </a>
-                ) : null}
-              </div>
-            ) : (
-              <p className="mt-3 text-xs leading-relaxed text-white/40">
-                No legal provider is listed for this region yet. Availability is
-                provided by JustWatch via TMDB.
-              </p>
-            )}
-          </div>
-
-          <div className="card p-5">
-            <h3 className="flex items-center gap-2 text-sm font-extrabold">
-              <Play size={16} className="text-gold" /> Playback
-            </h3>
-            <p className="mt-2 text-xs leading-relaxed text-white/40">
-              {playableSources.length > 0
-                ? `${playableSources.length} playable ${
-                    playableSources.length === 1 ? "source" : "sources"
-                  } available. The player supports HLS adaptive streaming, MP4, and embedded providers.`
-                : "No playable source has been configured for this title yet."}
-            </p>
-            {movie.trailer_url ? (
-              <a
-                href={movie.trailer_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-gold transition hover:text-gold-soft"
-              >
-                <Film size={13} /> Open official trailer
-              </a>
-            ) : null}
           </div>
 
           <Link

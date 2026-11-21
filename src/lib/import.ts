@@ -1,3 +1,4 @@
+import { canonicalLanguage } from "@/lib/languages";
 import { slugify } from "@/lib/utils";
 import { getSiteSettings } from "@/lib/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -295,7 +296,7 @@ export async function importMovieFromTmdb(input: ImportInput) {
       url: trailerUrl,
       type: "youtube",
       quality: "HD",
-      language: details.original_language || null,
+      language: canonicalLanguage(details.original_language),
       priority: 1,
       is_active: true,
     });

@@ -14,9 +14,11 @@ import {
   addMovieSourceAction,
   deleteMovieSourceAction,
   grabMovieSourcesAction,
+  setMovieSourceLanguageAction,
   toggleMovieSourceAction,
 } from "@/app/admin/actions/movies";
 import { SubmitButton } from "@/components/admin/submit-button";
+import { canonicalLanguage, LANGUAGES } from "@/lib/languages";
 import type { MovieSource, Source } from "@/lib/types";
 
 const typeIcon = {
@@ -98,11 +100,19 @@ export function SourceManager({
             placeholder="Paste StreamWish / FileMoon / DoodStream / VidHide link, .m3u8, page URL — or leave blank to auto-search by title…"
             className="input h-11 flex-1"
           />
-          <input
+          <select
             name="language"
-            placeholder="Language (optional)"
-            className="input h-11 sm:w-44"
-          />
+            defaultValue=""
+            aria-label="Audio language"
+            className="input h-11 sm:w-44 [&>option]:bg-[#11141d] [&>option]:text-white"
+          >
+            <option value="">Auto-detect audio</option>
+            {LANGUAGES.map((language) => (
+              <option key={language.name} value={language.name}>
+                {language.name}
+              </option>
+            ))}
+          </select>
           <SubmitButton
             className="btn-gold h-11 shrink-0"
             pendingText="Grabbing…"
@@ -111,8 +121,10 @@ export function SourceManager({
           </SubmitButton>
         </div>
         <p className="mt-2 text-[11px] text-white/35">
-          Leave blank and click <strong>Grab source</strong> to auto-discover
-          and verify playable streams across built-in TMDB/IMDb providers
+          Audio language is detected automatically from movie metadata and the
+          source link; choose one above to override. Leave the link blank and
+          click <strong>Grab source</strong> to auto-discover and verify
+          playable streams across built-in TMDB/IMDb providers
           (VidLink Pro, VidFast, FileMoon, VidHide, DoodStream, StreamWish,
           NontonGo, MoviesAPI, VidSrc, Archive MP4/HLS &amp; YouTube), or paste
           any share/embed link (<code className="text-white/55">/d/</code>,{" "}
@@ -193,12 +205,19 @@ export function SourceManager({
             <label className="label" htmlFor="source-language">
               Language
             </label>
-            <input
+            <select
               id="source-language"
               name="language"
-              placeholder="English / Bangla"
-              className="input"
-            />
+              defaultValue=""
+              className="input [&>option]:bg-[#11141d] [&>option]:text-white"
+            >
+              <option value="">Auto-detect audio</option>
+              {LANGUAGES.map((language) => (
+                <option key={language.name} value={language.name}>
+                  {language.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -272,13 +291,40 @@ export function SourceManager({
                 <p className="mt-0.5 truncate text-[11px] text-white/35">
                   {source.type.toUpperCase()}
                   {source.quality ? ` · ${source.quality}` : ""}
-                  {source.language ? ` · ${source.language}` : ""} · priority{" "}
-                  {source.priority}
+                  {` · ${canonicalLanguage(source.language) || "Auto"}`} ·
+                  priority {source.priority}
                 </p>
                 <p className="truncate text-[10px] text-white/20">
                   {source.url}
                 </p>
               </div>
+              <form
+                key={`${source.id}-${source.language || "auto"}`}
+                action={setMovieSourceLanguageAction}
+                className="flex shrink-0 items-center gap-1.5"
+              >
+                <input type="hidden" name="id" value={source.id} />
+                <input type="hidden" name="movie_id" value={movieId} />
+                <select
+                  name="language"
+                  defaultValue={canonicalLanguage(source.language) || ""}
+                  aria-label={`Audio language for ${source.label}`}
+                  className="input !h-9 !w-28 !px-2 text-xs [&>option]:bg-[#11141d] [&>option]:text-white"
+                >
+                  <option value="">Auto</option>
+                  {LANGUAGES.map((language) => (
+                    <option key={language.name} value={language.name}>
+                      {language.name}
+                    </option>
+                  ))}
+                </select>
+                <SubmitButton
+                  className="btn-ghost !px-2 !py-2 text-xs"
+                  pendingText="…"
+                >
+                  Set
+                </SubmitButton>
+              </form>
               <span
                 className={`badge shrink-0 ${
                   source.is_active

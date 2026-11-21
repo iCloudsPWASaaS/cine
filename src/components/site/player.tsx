@@ -1,23 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Artplayer from "artplayer";
 import Hls from "hls.js";
 import {
   ExternalLink,
   Film,
   Info,
+  Languages,
   Play,
-  Shield,
-  ShieldAlert,
-  ShieldCheck,
   Tv,
 } from "lucide-react";
+import { groupSourcesByLanguage, normalizeLanguage } from "@/lib/languages";
 import type { MovieSource } from "@/lib/types";
 import {
   cn,
   externalUrl,
-  isSandboxIncompatibleHost,
   isSandboxSafeHost,
   normalizeEmbedUrl,
   youtubeEmbed,
@@ -99,7 +97,7 @@ function NativePlayer({
           "x5-playsinline": true,
           "x5-video-player-type": "h5",
           "x5-video-player-fullscreen": "true",
-        } as any,
+        } as Record<string, string | boolean>,
         customType: {
           m3u8: (video: HTMLVideoElement, url: string) => {
             if (HlsPlayer.isSupported()) {
@@ -146,36 +144,23 @@ function NativePlayer({
   return <div ref={containerRef} className="h-full w-full" />;
 }
 
-type ShieldMode = "auto" | "strict" | "compatible";
-
 interface EmbedFrameProps {
   source: MovieSource;
-  shieldMode: ShieldMode;
   onLoaded: () => void;
-  onBlockedPopup: () => void;
 }
 
-function EmbedFrame({
-  source,
-  shieldMode,
-  onLoaded,
-  onBlockedPopup,
-}: EmbedFrameProps) {
+function EmbedFrame({ source, onLoaded }: EmbedFrameProps) {
   const url =
     source.type === "youtube"
       ? youtubeEmbed(source.url)
       : normalizeEmbedUrl(source.url);
 
-  const canSandbox = source.type === "youtube" || isSandboxSafeHost(url);
   const useStrictSandbox =
-    shieldMode === "strict" || (shieldMode === "auto" && canSandbox);
+    source.type === "youtube" || isSandboxSafeHost(url);
 
   useEffect(() => {
     const originalOpen = window.open;
-    const blockedOpen: typeof window.open = () => {
-      onBlockedPopup();
-      return null;
-    };
+    const blockedOpen: typeof window.open = () => null;
 
     window.open = blockedOpen;
 
@@ -197,7 +182,7 @@ function EmbedFrame({
       window.open = originalOpen;
       window.removeEventListener("blur", handleBlur);
     };
-  }, [onBlockedPopup]);
+  }, []);
 
   return (
     <iframe
@@ -220,6 +205,16 @@ function EmbedFrame({
 
 export function Player({ slug, poster, sources, autoplay = false }: PlayerProps) {
   const playable = sources.filter((source) => source.type !== "external");
+  const languageGroups = useMemo(
+    () => groupSourcesByLanguage(sources),
+    [sources],
+  );
+  const [activeLanguage, setActiveLanguage] = useState<string>("All");
+  const visibleSources =
+    activeLanguage === "All"
+      ? sources
+      : languageGroups.find((group) => group.name === activeLanguage)?.sources ||
+        [];
   const initialSource = playable[0] || sources[0] || null;
   const [activeId, setActiveId] = useState<string | null>(
     initialSource?.id || null,
@@ -227,60 +222,17 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
   const [loading, setLoading] = useState(
     Boolean(initialSource && initialSource.type !== "external"),
   );
-  const [shieldMode, setShieldMode] = useState<ShieldMode>("auto");
-  const [blockedPopups, setBlockedPopups] = useState(0);
   const tracked = useRef(false);
   const handleLoading = useCallback(
     (value: boolean) => setLoading(value),
     [],
   );
-  const handleBlockedPopup = useCallback(() => {
-    setBlockedPopups((prev) => prev + 1);
-  }, []);
 
   const active =
     sources.find((source) => source.id === activeId) ||
     playable[0] ||
     sources[0] ||
     null;
-
-  const activeNormalizedUrl = active
-    ? active.type === "youtube"
-      ? youtubeEmbed(active.url)
-      : normalizeEmbedUrl(active.url)
-    : "";
-  const activeRejectsSandbox =
-    Boolean(active) &&
-    active?.type !== "youtube" &&
-    isSandboxIncompatibleHost(activeNormalizedUrl);
-
-  const effectiveShieldMode =
-    activeRejectsSandbox && shieldMode === "strict"
-      ? "compatible"
-      : shieldMode;
-
-  const isStrictSandboxed =
-    Boolean(active) &&
-    (active?.type === "hls" ||
-      active?.type === "mp4" ||
-      effectiveShieldMode === "strict" ||
-      (effectiveShieldMode === "auto" &&
-        (active?.type === "youtube" ||
-          isSandboxSafeHost(activeNormalizedUrl))));
-
-  const cycleShieldMode = () => {
-    setShieldMode((current) => {
-      if (activeRejectsSandbox) {
-        return current === "compatible" ? "auto" : "compatible";
-      }
-      if (current === "auto") return "strict";
-      if (current === "strict") return "compatible";
-      return "auto";
-    });
-    if (active && active.type !== "external") {
-      setLoading(true);
-    }
-  };
 
   const track = () => {
     if (tracked.current) return;
@@ -339,9 +291,7 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
           <div onClick={track} className="h-full w-full">
             <EmbedFrame
               source={active}
-              shieldMode={effectiveShieldMode}
               onLoaded={() => setLoading(false)}
-              onBlockedPopup={handleBlockedPopup}
             />
           </div>
         ) : (
@@ -383,52 +333,41 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
               {sources.length}
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {active && (active.type === "embed" || active.type === "youtube") ? (
-              <button
-                type="button"
-                onClick={cycleShieldMode}
-                title="Click to switch Popup Shield mode (Auto / Strict Sandbox / Compatible)"
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition",
-                  isStrictSandboxed
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:border-emerald-400/50"
-                    : "border-amber-500/30 bg-amber-500/10 text-amber-300 hover:border-amber-400/50",
-                )}
-              >
-                {isStrictSandboxed ? (
-                  <ShieldCheck size={13} className="text-emerald-400" />
-                ) : effectiveShieldMode === "compatible" ? (
-                  <ShieldAlert size={13} className="text-amber-400" />
-                ) : (
-                  <Shield size={13} className="text-amber-400" />
-                )}
-                Popup Shield:{" "}
-                {effectiveShieldMode === "auto"
-                  ? isStrictSandboxed
-                    ? "ON (Sandboxed)"
-                    : "Smart Guard"
-                  : effectiveShieldMode === "strict"
-                    ? "Strict (No Popups)"
-                    : "Compatible"}
-                {blockedPopups > 0 ? (
-                  <span className="rounded bg-black/40 px-1.5 py-0.2 text-[10px]">
-                    {blockedPopups} blocked
-                  </span>
-                ) : null}
-              </button>
-            ) : (
-              <p className="flex items-center gap-1.5 text-[11px] text-emerald-300/80">
-                <ShieldCheck size={13} className="text-emerald-400" />
-                Popup-free native stream
-              </p>
-            )}
-          </div>
         </div>
 
         {sources.length > 0 ? (
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
+              <Languages size={12} className="text-gold" /> Audio
+            </span>
+            {[
+              { name: "All", count: sources.length },
+              ...languageGroups.map((group) => ({
+                name: group.name,
+                count: group.sources.length,
+              })),
+            ].map((group) => (
+              <button
+                key={group.name}
+                type="button"
+                onClick={() => setActiveLanguage(group.name)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold transition",
+                  activeLanguage === group.name
+                    ? "border-gold/40 bg-gold/10 text-gold"
+                    : "border-white/10 bg-white/[0.04] text-white/45 hover:border-white/25 hover:text-white/80",
+                )}
+              >
+                {group.name}
+                <span className="text-[10px] opacity-60">{group.count}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {sources.length > 0 ? (
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
-            {sources.map((source) => (
+            {visibleSources.map((source) => (
               <button
                 key={source.id}
                 type="button"
@@ -465,7 +404,14 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
                   <span className="mt-0.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-white/35">
                     {sourceKindLabel(source)}
                     {source.quality ? <> · {source.quality}</> : null}
-                    {source.language ? <> · {source.language}</> : null}
+                    {source.language ? (
+                      <>
+                        {" · "}
+                        {normalizeLanguage(source.language) === "Other"
+                          ? source.language
+                          : normalizeLanguage(source.language)}
+                      </>
+                    ) : null}
                   </span>
                 </span>
               </button>

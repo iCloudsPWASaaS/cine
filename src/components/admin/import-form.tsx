@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, Globe2, Link2, Search } from "lucide-react";
+import { CalendarDays, Globe2, Search } from "lucide-react";
 import { importMovieByNameAction } from "@/app/admin/actions/import";
 import { SubmitButton } from "@/components/admin/submit-button";
 
@@ -51,7 +51,7 @@ export function ImportForm({ disabled = false }: { disabled?: boolean }) {
     <div>
       <form
         action={importMovieByNameAction}
-        className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_1.6fr_0.7fr_1fr_auto]"
+        className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_0.7fr_1fr_auto]"
       >
         <div className="relative md:col-span-2 xl:col-span-1">
           <Search
@@ -70,18 +70,6 @@ export function ImportForm({ disabled = false }: { disabled?: boolean }) {
             required
             disabled={disabled}
             placeholder="Movie or series title, e.g. Heartland…"
-            className="input h-12 pl-11"
-          />
-        </div>
-        <div className="relative md:col-span-2 xl:col-span-1">
-          <Link2
-            size={17}
-            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/35"
-          />
-          <input
-            name="source_input"
-            disabled={disabled}
-            placeholder="Source link (StreamWish, FileMoon, DoodStream, VidHide, .m3u8 or page URL)…"
             className="input h-12 pl-11"
           />
         </div>

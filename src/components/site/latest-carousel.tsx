@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Play, Star } from "lucide-react";
+import { Play, Star } from "lucide-react";
 import { Autoplay, EffectCoverflow, Pagination } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { MediaImage } from "@/components/site/media-image";
@@ -28,31 +28,6 @@ export function LatestCarousel({ movies }: { movies: Movie[] }) {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1100px_520px_at_45%_0%,rgba(48,160,185,0.34),transparent_62%),radial-gradient(820px_420px_at_76%_8%,rgba(176,150,126,0.22),transparent_60%),radial-gradient(900px_460px_at_8%_0%,rgba(18,70,90,0.36),transparent_62%),linear-gradient(to_bottom,rgba(12,48,62,0.18),transparent_78%)]" />
 
       <div className="container-page relative">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-3 sm:mb-6 sm:gap-4">
-          <div>
-            <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-gold">
-              <span className="h-1.5 w-1.5 animate-soft-pulse rounded-full bg-gold" />
-              New on Cinewood
-            </p>
-            <h1 className="display mt-1.5 text-3xl tracking-[0.04em] sm:mt-2 sm:text-5xl">
-              Latest Releases
-            </h1>
-            <p className="mt-1 text-xs text-white/40">
-              Automatically loaded from the newest titles added to the library.
-            </p>
-          </div>
-          <Link
-            href="/movies?sort=newest"
-            className="group inline-flex items-center gap-1.5 pb-1 text-xs font-bold uppercase tracking-[0.14em] text-white/45 transition hover:text-gold"
-          >
-            View all releases
-            <ArrowRight
-              size={14}
-              className="transition group-hover:translate-x-1"
-            />
-          </Link>
-        </div>
-
         <Swiper
           className="latest-swiper !pb-12 sm:!pb-14"
           modules={[Autoplay, EffectCoverflow, Pagination]}

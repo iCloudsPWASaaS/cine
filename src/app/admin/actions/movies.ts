@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
+import { canonicalLanguage } from "@/lib/languages";
 import {
   ensureDefaultProvidersInRegistry,
   grabAndSaveMovieSources,
@@ -239,6 +240,8 @@ export async function addMovieSourceAction(formData: FormData) {
 
   const detected = detectSourceProvider(rawUrl);
   const url = detected ? detected.url : rawUrl;
+  const rawLanguage = text(formData, "language");
+  const language = canonicalLanguage(rawLanguage) || rawLanguage || null;
   const rawLabel = text(formData, "label");
   const label =
     rawLabel ||
@@ -273,7 +276,7 @@ export async function addMovieSourceAction(formData: FormData) {
       url,
       type,
       quality: text(formData, "quality") || detected?.quality || null,
-      language: text(formData, "language") || null,
+      language,
       priority:
         Number(formData.get("priority")) || detected?.priority || 10,
       is_active: formData.get("is_active") === "on",
@@ -293,7 +296,8 @@ export async function grabMovieSourcesAction(formData: FormData) {
   if (!movieId) fail(back, "Missing movie id.");
 
   const sourceInput = text(formData, "source_input");
-  const language = text(formData, "language") || null;
+  const rawLanguage = text(formData, "language");
+  const language = canonicalLanguage(rawLanguage) || rawLanguage || null;
 
   let result: { count: number; newCount: number; labels: string[] };
   try {
@@ -354,4 +358,24 @@ export async function toggleMovieSourceAction(formData: FormData) {
   if (error) fail(back, error.message);
   revalidateAll();
   done(back, "Source updated.");
+}
+
+export async function setMovieSourceLanguageAction(formData: FormData) {
+  await requireAdmin();
+  const id = text(formData, "id");
+  const movieId = text(formData, "movie_id");
+  const rawLanguage = text(formData, "language");
+  const back = movieId ? `/admin/movies/${movieId}` : "/admin/movies";
+  if (!id) fail(back, "Missing source id.");
+
+  const language = canonicalLanguage(rawLanguage) || rawLanguage || null;
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("movie_sources")
+    .update({ language })
+    .eq("id", id);
+
+  if (error) fail(back, error.message);
+  revalidateAll();
+  done(back, "Audio language updated.");
 }

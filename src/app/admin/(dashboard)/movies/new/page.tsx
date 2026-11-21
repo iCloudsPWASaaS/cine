@@ -42,9 +42,8 @@ export default async function NewMoviePage({
           Add a title
         </h1>
         <p className="mt-2 max-w-xl text-sm text-white/40">
-          Import everything from TMDB by name and optionally grab playback
-          sources (StreamWish, FileMoon, DoodStream, VidHide, HLS/MP4 or page
-          URL) in one step.
+          Import everything from TMDB by name. Cinewood automatically finds and
+          attaches every available playback source.
         </p>
       </div>
 
@@ -58,12 +57,12 @@ export default async function NewMoviePage({
             <div>
               <h2 className="flex items-center gap-2 text-base font-extrabold">
                 <Sparkles size={17} className="text-gold" /> Add a title &amp;
-                grab sources
+                auto-grab sources
               </h2>
               <p className="mt-1 max-w-xl text-xs leading-relaxed text-white/40">
-                Enter the movie or series title and optionally paste a video
-                source or watch page link. Cinewood imports TMDB metadata and
-                attaches all detected playback sources automatically.
+                Enter a movie or series title. Cinewood imports the TMDB
+                metadata and automatically attaches every playback source it
+                can verify.
               </p>
             </div>
             <span className="badge shrink-0 border-gold/25 text-gold">
@@ -94,8 +93,7 @@ export default async function NewMoviePage({
 
           <p className="mt-2 text-[11px] text-white/30">
             Exact title matches are preferred; otherwise the top TMDB result is
-            imported. Any StreamWish, FileMoon, DoodStream, VidHide, HLS/MP4 or
-            embedded player links are normalized and attached automatically.
+            imported. Every verified playback source is attached automatically.
           </p>
         </div>
       </section>

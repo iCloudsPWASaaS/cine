@@ -75,11 +75,10 @@ export function Footer({ settings, genres }: FooterProps) {
       </div>
 
       <div className="border-t border-white/[0.06]">
-        <div className="container-page flex flex-col gap-2 py-5 text-xs text-white/35 sm:flex-row sm:items-center sm:justify-between">
+        <div className="container-page flex items-center justify-center py-5 text-center text-xs text-white/35">
           <p>
             © {new Date().getFullYear()} {settings.name}. All rights reserved.
           </p>
-          <p>{settings.tagline}</p>
         </div>
       </div>
     </footer>

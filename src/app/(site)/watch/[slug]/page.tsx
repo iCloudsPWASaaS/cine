@@ -229,6 +229,9 @@ export default async function WatchPage({ params }: WatchPageProps) {
               slug={movie.slug}
               poster={movie.backdrop_url || movie.poster_url}
               sources={movie.sources}
+              subtitles={(movie.metadata?.subtitles || []).filter(
+                (item) => item.is_active && item.url,
+              )}
               autoplay={settings.player.autoplay}
             />
           </div>

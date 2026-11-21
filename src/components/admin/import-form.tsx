@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { CalendarDays, Globe2, Search } from "lucide-react";
 import { importMovieByNameAction } from "@/app/admin/actions/import";
 import { SubmitButton } from "@/components/admin/submit-button";
+import { LANGUAGES } from "@/lib/languages";
 
 interface LookupResult {
   year: string | null;
@@ -51,7 +52,7 @@ export function ImportForm({ disabled = false }: { disabled?: boolean }) {
     <div>
       <form
         action={importMovieByNameAction}
-        className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_0.7fr_1fr_auto]"
+        className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_0.7fr_0.8fr_0.8fr_auto]"
       >
         <div className="relative md:col-span-2 xl:col-span-1">
           <Search
@@ -111,6 +112,19 @@ export function ImportForm({ disabled = false }: { disabled?: boolean }) {
             className="input h-12 pl-10"
           />
         </div>
+        <select
+          name="language"
+          defaultValue=""
+          aria-label="Preferred audio language"
+          className="input h-12 [&>option]:bg-[#11141d] [&>option]:text-white"
+        >
+          <option value="">Auto audio</option>
+          {LANGUAGES.map((language) => (
+            <option key={language.name} value={language.name}>
+              {language.name}
+            </option>
+          ))}
+        </select>
         <SubmitButton
           className="btn-gold h-12 shrink-0"
           pendingText="Importing…"

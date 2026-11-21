@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import Artplayer from "artplayer";
 import Hls from "hls.js";
 import {
@@ -8,16 +15,20 @@ import {
   Film,
   Info,
   Languages,
+  Maximize2,
+  Minimize2,
   Play,
+  Subtitles,
   Tv,
 } from "lucide-react";
 import { groupSourcesByLanguage, normalizeLanguage } from "@/lib/languages";
-import type { MovieSource } from "@/lib/types";
+import type { MovieSource, MovieSubtitle } from "@/lib/types";
 import {
   cn,
   externalUrl,
   isSandboxSafeHost,
   normalizeEmbedUrl,
+  withSubtitleParams,
   youtubeEmbed,
 } from "@/lib/utils";
 
@@ -25,7 +36,23 @@ interface PlayerProps {
   slug: string;
   poster?: string | null;
   sources: MovieSource[];
+  subtitles?: MovieSubtitle[];
   autoplay?: boolean;
+}
+
+function subscribeToTouch() {
+  return () => {};
+}
+
+function getTouchSnapshot() {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(pointer: coarse)").matches
+  );
+}
+
+function getServerTouchSnapshot() {
+  return false;
 }
 
 function sourceKindLabel(source: MovieSource) {
@@ -47,14 +74,18 @@ function NativePlayer({
   source,
   poster,
   autoplay,
+  subtitleUrl,
   onLoadingChange,
 }: {
   source: MovieSource;
   poster?: string | null;
   autoplay: boolean;
+  subtitleUrl?: string | null;
   onLoadingChange: (loading: boolean) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const artRef = useRef<Artplayer | null>(null);
+  const subtitleUrlRef = useRef(subtitleUrl);
 
   useEffect(() => {
     let art: Artplayer | null = null;
@@ -84,19 +115,26 @@ function NativePlayer({
         setting: true,
         playbackRate: true,
         aspectRatio: true,
-        fullscreen: false,
+        fullscreen: true,
         fullscreenWeb: true,
         pip: true,
         miniProgressBar: true,
         airplay: true,
         autoPlayback: true,
         hotkey: true,
+        subtitle: {
+          url: subtitleUrlRef.current || undefined,
+          type: /\.srt(?:$|\?)/i.test(subtitleUrlRef.current || "")
+            ? "srt"
+            : "vtt",
+          style: { color: "#fff", fontSize: "20px" },
+        },
         moreVideoAttr: {
           playsInline: true,
           "webkit-playsinline": true,
           "x5-playsinline": true,
           "x5-video-player-type": "h5",
-          "x5-video-player-fullscreen": "true",
+          "x5-video-orientation": "landscape",
         } as Record<string, string | boolean>,
         customType: {
           m3u8: (video: HTMLVideoElement, url: string) => {
@@ -113,6 +151,7 @@ function NativePlayer({
           },
         },
       });
+      artRef.current = art;
 
       art.on("play", () => {
         if (art) art.notice.show = "";
@@ -128,6 +167,7 @@ function NativePlayer({
 
     return () => {
       cancelled = true;
+      artRef.current = null;
       try {
         hls?.destroy();
       } catch {
@@ -141,19 +181,51 @@ function NativePlayer({
     };
   }, [source.url, poster, autoplay, onLoadingChange]);
 
+  useEffect(() => {
+    subtitleUrlRef.current = subtitleUrl;
+    const art = artRef.current;
+    if (!art) return;
+    try {
+      art.subtitle.url = subtitleUrl || "";
+      const video = art.video;
+      if (video?.textTracks) {
+        for (let index = 0; index < video.textTracks.length; index += 1) {
+          video.textTracks[index].mode = subtitleUrl ? "hidden" : "disabled";
+        }
+      }
+      if (!subtitleUrl) {
+        const subtitle = containerRef.current?.querySelector<HTMLElement>(
+          ".art-subtitle",
+        );
+        if (subtitle) subtitle.innerHTML = "";
+      }
+    } catch {
+      // ignore
+    }
+  }, [subtitleUrl]);
+
   return <div ref={containerRef} className="h-full w-full" />;
 }
 
 interface EmbedFrameProps {
   source: MovieSource;
+  subtitle?: MovieSubtitle | null;
+  allowNativeFullscreen: boolean;
   onLoaded: () => void;
 }
 
-function EmbedFrame({ source, onLoaded }: EmbedFrameProps) {
-  const url =
+function EmbedFrame({
+  source,
+  subtitle,
+  allowNativeFullscreen,
+  onLoaded,
+}: EmbedFrameProps) {
+  const url = withSubtitleParams(
     source.type === "youtube"
       ? youtubeEmbed(source.url)
-      : normalizeEmbedUrl(source.url);
+      : normalizeEmbedUrl(source.url),
+    subtitle,
+  );
 
   const useStrictSandbox =
     source.type === "youtube" || isSandboxSafeHost(url);
@@ -186,7 +258,7 @@ function EmbedFrame({ source, onLoaded }: EmbedFrameProps) {
 
   return (
     <iframe
-      key={`${url}-${useStrictSandbox ? "sandboxed" : "compatible"}`}
+      key={`${url}-${useStrictSandbox ? "sandboxed" : "compatible"}-${allowNativeFullscreen ? "native-fs" : "app-fs"}`}
       src={url}
       title={source.label}
       className="h-full w-full border-0"
@@ -195,15 +267,25 @@ function EmbedFrame({ source, onLoaded }: EmbedFrameProps) {
           ? "allow-scripts allow-same-origin allow-forms allow-presentation"
           : undefined
       }
-      allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer"
-      allowFullScreen
+      allow={
+        allowNativeFullscreen
+          ? "autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer"
+          : "autoplay; picture-in-picture; encrypted-media; gyroscope; accelerometer"
+      }
+      allowFullScreen={allowNativeFullscreen}
       referrerPolicy="origin"
       onLoad={onLoaded}
     />
   );
 }
 
-export function Player({ slug, poster, sources, autoplay = false }: PlayerProps) {
+export function Player({
+  slug,
+  poster,
+  sources,
+  subtitles = [],
+  autoplay = false,
+}: PlayerProps) {
   const playable = sources.filter((source) => source.type !== "external");
   const languageGroups = useMemo(
     () => groupSourcesByLanguage(sources),
@@ -223,10 +305,60 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
     Boolean(initialSource && initialSource.type !== "external"),
   );
   const tracked = useRef(false);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const isTouch = useSyncExternalStore(
+    subscribeToTouch,
+    getTouchSnapshot,
+    getServerTouchSnapshot,
+  );
+  const [nativeFullscreen, setNativeFullscreen] = useState(false);
+  const [webFullscreen, setWebFullscreen] = useState(false);
+  const [activeSubtitleId, setActiveSubtitleId] = useState<string | null>(null);
   const handleLoading = useCallback(
     (value: boolean) => setLoading(value),
     [],
   );
+
+  useEffect(() => {
+    const onChange = () => setNativeFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    stage.classList.toggle("is-web-fullscreen", webFullscreen);
+    document.body.classList.toggle("player-web-fullscreen-open", webFullscreen);
+    return () => {
+      stage.classList.remove("is-web-fullscreen");
+      document.body.classList.remove("player-web-fullscreen-open");
+    };
+  }, [webFullscreen]);
+
+  const toggleFullscreen = useCallback(async () => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    if (isTouch) {
+      setWebFullscreen((value) => !value);
+      return;
+    }
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else if (stage.requestFullscreen) {
+        await stage.requestFullscreen();
+      } else {
+        setWebFullscreen((value) => !value);
+      }
+    } catch {
+      setWebFullscreen((value) => !value);
+    }
+  }, [isTouch]);
+
+  const fullscreenActive = nativeFullscreen || webFullscreen;
+  const activeSubtitle =
+    subtitles.find((item) => item.id === activeSubtitleId) || null;
 
   const active =
     sources.find((source) => source.id === activeId) ||
@@ -246,7 +378,11 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
 
   return (
     <div className="player-card overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_40px_120px_-40px_rgba(0,0,0,0.95)] sm:rounded-[26px]">
-      <div className="player-stage relative aspect-video w-full bg-black">
+      <div
+        ref={stageRef}
+        data-source-type={active?.type || "none"}
+        className="player-stage relative aspect-video w-full bg-black"
+      >
         {!active ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
             <span className="grid h-16 w-16 place-items-center rounded-full border border-white/10 bg-white/5 text-white/40">
@@ -291,6 +427,8 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
           <div onClick={track} className="h-full w-full">
             <EmbedFrame
               source={active}
+              subtitle={activeSubtitle}
+              allowNativeFullscreen={!isTouch}
               onLoaded={() => setLoading(false)}
             />
           </div>
@@ -300,10 +438,23 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
               source={active}
               poster={poster}
               autoplay={autoplay}
+              subtitleUrl={activeSubtitle?.url}
               onLoadingChange={handleLoading}
             />
           </div>
         )}
+
+        {active && active.type !== "external" ? (
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            aria-label={fullscreenActive ? "Exit full screen" : "Full screen"}
+            title={fullscreenActive ? "Exit full screen" : "Full screen"}
+            className="player-fullscreen-button absolute right-3 top-3 z-[90] h-9 w-9 place-items-center rounded-lg border border-white/15 bg-black/60 text-white/85 backdrop-blur transition hover:border-gold/50 hover:text-gold"
+          >
+            {fullscreenActive ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+          </button>
+        ) : null}
 
         {loading && active && active.type !== "external" ? (
           <div className="pointer-events-none absolute inset-0 z-[80] grid place-items-center bg-black/35">
@@ -334,6 +485,32 @@ export function Player({ slug, poster, sources, autoplay = false }: PlayerProps)
             </span>
           </div>
         </div>
+
+        {subtitles.length > 0 ? (
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
+              <Subtitles size={12} className="text-gold" /> Subtitles
+            </span>
+            {[
+              { id: null, label: "Off" },
+              ...subtitles.map((item) => ({ id: item.id, label: item.label })),
+            ].map((option) => (
+              <button
+                key={option.id || "off"}
+                type="button"
+                onClick={() => setActiveSubtitleId(option.id)}
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-[11px] font-bold transition",
+                  activeSubtitleId === option.id
+                    ? "border-gold/40 bg-gold/10 text-gold"
+                    : "border-white/10 bg-white/[0.04] text-white/45 hover:border-white/25 hover:text-white/80",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         {sources.length > 0 ? (
           <div className="mb-3 flex flex-wrap items-center gap-1.5">

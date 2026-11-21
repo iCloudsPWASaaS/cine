@@ -1,4 +1,5 @@
 import {
+  Captions,
   ExternalLink,
   Film,
   Link2,
@@ -12,14 +13,17 @@ import {
 } from "lucide-react";
 import {
   addMovieSourceAction,
+  addMovieSubtitleAction,
   deleteMovieSourceAction,
+  deleteMovieSubtitleAction,
   grabMovieSourcesAction,
   setMovieSourceLanguageAction,
   toggleMovieSourceAction,
+  toggleMovieSubtitleAction,
 } from "@/app/admin/actions/movies";
 import { SubmitButton } from "@/components/admin/submit-button";
 import { canonicalLanguage, LANGUAGES } from "@/lib/languages";
-import type { MovieSource, Source } from "@/lib/types";
+import type { MovieSource, MovieSubtitle, Source } from "@/lib/types";
 
 const typeIcon = {
   hls: Tv,
@@ -46,10 +50,12 @@ export function SourceManager({
   movieId,
   sources,
   registry,
+  subtitles = [],
 }: {
   movieId: string;
   sources: MovieSource[];
   registry: Source[];
+  subtitles?: MovieSubtitle[];
 }) {
   return (
     <section className="admin-card p-5 sm:p-6">
@@ -367,6 +373,107 @@ export function SourceManager({
           );
         })}
       </div>
+
+      <details className="group mt-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+        <summary className="flex cursor-pointer list-none items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white/45 transition hover:text-gold">
+          <Captions size={13} /> Subtitle tracks ({subtitles.length})
+          <span className="ml-auto text-white/25 transition group-open:rotate-180">
+            ▾
+          </span>
+        </summary>
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <p className="mb-3 text-[11px] leading-relaxed text-white/35">
+            Add direct <code className="text-white/55">.vtt</code> or{" "}
+            <code className="text-white/55">.srt</code> URLs. They show on native
+            HLS/MP4 players and are passed to embed players that accept external
+            subtitles (VidLink, VidFast, MultiEmbed/SuperEmbed).
+          </p>
+          <form
+            action={addMovieSubtitleAction}
+            className="grid gap-2.5 sm:grid-cols-[1fr_1.6fr_1fr_auto]"
+          >
+            <input type="hidden" name="movie_id" value={movieId} />
+            <input
+              name="label"
+              required
+              placeholder="Label (Hindi)"
+              className="input"
+              aria-label="Subtitle label"
+            />
+            <input
+              name="url"
+              required
+              type="url"
+              placeholder="https://example.com/subtitles.vtt"
+              className="input"
+              aria-label="Subtitle URL"
+            />
+            <select
+              name="language"
+              defaultValue=""
+              className="input [&>option]:bg-[#11141d] [&>option]:text-white"
+              aria-label="Subtitle language"
+            >
+              <option value="">Auto</option>
+              {LANGUAGES.map((language) => (
+                <option key={language.name} value={language.name}>
+                  {language.name}
+                </option>
+              ))}
+            </select>
+            <SubmitButton className="btn-gold" pendingText="Adding…">
+              Add subtitle
+            </SubmitButton>
+          </form>
+
+          <div className="mt-3 space-y-2">
+            {subtitles.length === 0 ? (
+              <p className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-3 text-[11px] text-white/35">
+                No subtitle tracks yet.
+              </p>
+            ) : (
+              subtitles.map((track) => (
+                <div
+                  key={track.id}
+                  className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-bold text-white/80">
+                      {track.label}
+                      {track.language ? ` · ${track.language}` : ""}
+                    </p>
+                    <p className="truncate text-[10px] text-white/25">
+                      {track.url}
+                    </p>
+                  </div>
+                  <form action={toggleMovieSubtitleAction}>
+                    <input type="hidden" name="movie_id" value={movieId} />
+                    <input type="hidden" name="id" value={track.id} />
+                    <SubmitButton
+                      className="btn-ghost !px-2 !py-1.5 text-[11px]"
+                      pendingText="…"
+                    >
+                      <Power size={12} />
+                      {track.is_active ? "Hide" : "Show"}
+                    </SubmitButton>
+                  </form>
+                  <form action={deleteMovieSubtitleAction}>
+                    <input type="hidden" name="movie_id" value={movieId} />
+                    <input type="hidden" name="id" value={track.id} />
+                    <SubmitButton
+                      className="btn-danger !px-2 !py-1.5 text-[11px]"
+                      pendingText="…"
+                      confirm="Remove this subtitle track?"
+                    >
+                      <Trash2 size={12} />
+                    </SubmitButton>
+                  </form>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </details>
     </section>
   );
 }

@@ -3,6 +3,8 @@ import { promisify } from "node:util";
 import {
   canonicalLanguage,
   detectLanguageFromText,
+  languageCode,
+  LANGUAGES,
 } from "@/lib/languages";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -138,18 +140,58 @@ function normalizeTitleTokens(title: string): string[] {
     .filter((token) => token.length >= 3 && !["the", "and", "for", "movie", "part"].includes(token));
 }
 
-function languageFromMetadata(metadata: unknown): string | null {
+function languagesFromMetadata(metadata: unknown): string[] {
   const data = (metadata || {}) as {
     original_language?: string | null;
     languages?: string[] | null;
   };
-  return (
-    canonicalLanguage(data.original_language) ||
-    (data.languages || [])
-      .map((value) => canonicalLanguage(value))
-      .find(Boolean) ||
-    null
+  const found = [
+    canonicalLanguage(data.original_language),
+    ...(data.languages || []).map((value) => canonicalLanguage(value)),
+  ].filter((value): value is string => Boolean(value));
+  return LANGUAGES.map((language) => language.name).filter((name) =>
+    found.includes(name),
   );
+}
+
+function languageFromMetadata(metadata: unknown): string | null {
+  const languages = languagesFromMetadata(metadata);
+  return languages.includes("Hindi") ? "Hindi" : languages[0] || null;
+}
+
+function addLanguageVariants(
+  items: GrabbedSourceItem[],
+  language: string | null,
+): GrabbedSourceItem[] {
+  const code = languageCode(language);
+  if (language !== "Hindi" || !code) return items;
+
+  const variants: GrabbedSourceItem[] = [];
+  for (const item of items) {
+    if (
+      item.type !== "embed" ||
+      !/vidlink\.pro|vidfast\.|nontongo\.|moviesapi\.to|vidsrc\./i.test(
+        item.url,
+      ) ||
+      item.url.includes(`lang=${code}`)
+    ) {
+      continue;
+    }
+    try {
+      const url = new URL(item.url);
+      url.searchParams.set("lang", code);
+      variants.push({
+        ...item,
+        label: `${item.label} • ${language}`,
+        url: url.toString(),
+        language,
+        priority: Math.max(1, item.priority - 1),
+      });
+    } catch {
+      // keep the original item when the url cannot be parsed
+    }
+  }
+  return [...items, ...variants];
 }
 
 export async function verifySourcePlayable(
@@ -707,6 +749,7 @@ async function searchInternetArchiveStreams(
 
 export async function autoDiscoverSourcesForMovie(
   movieId: string,
+  preferredLanguage?: string | null,
 ): Promise<GrabbedSourceItem[]> {
   const supabase = createAdminClient();
   const { data: movie } = await supabase
@@ -726,7 +769,8 @@ export async function autoDiscoverSourcesForMovie(
 
   let tmdbAbs = movie.tmdb_id ? Math.abs(Number(movie.tmdb_id)) : null;
   const mediaKind = movie.type === "series" ? "tv" : "movie";
-  const detectedLanguage = languageFromMetadata(movie.metadata);
+  const detectedLanguage =
+    canonicalLanguage(preferredLanguage) || languageFromMetadata(movie.metadata);
 
   // If movie has no tmdb_id yet, look it up by title on TMDB automatically
   if (!tmdbAbs && tmdbConfigured()) {
@@ -1083,13 +1127,16 @@ export async function autoDiscoverSourcesForMovie(
         null,
     }));
 
-  return [
-    ...withDetectedLanguage(validArchive),
-    ...withDetectedLanguage(validPrimary),
-    ...withDetectedLanguage(validSecondary),
-    ...withDetectedLanguage(validTemplates),
-    ...withDetectedLanguage(validTrailers),
-  ];
+  return addLanguageVariants(
+    [
+      ...withDetectedLanguage(validArchive),
+      ...withDetectedLanguage(validPrimary),
+      ...withDetectedLanguage(validSecondary),
+      ...withDetectedLanguage(validTemplates),
+      ...withDetectedLanguage(validTrailers),
+    ],
+    detectedLanguage,
+  );
 }
 
 export async function grabAndSaveMovieSources(
@@ -1100,15 +1147,13 @@ export async function grabAndSaveMovieSources(
   const supabase = createAdminClient();
   const collected: GrabbedSourceItem[] = [];
 
-  let metaLanguage: string | null = null;
-  if (rawInput.trim() && !options?.language) {
-    const { data: movieRow } = await supabase
-      .from("movies")
-      .select("metadata")
-      .eq("id", movieId)
-      .maybeSingle();
-    metaLanguage = languageFromMetadata(movieRow?.metadata);
-  }
+  const { data: movieRow } = await supabase
+    .from("movies")
+    .select("metadata")
+    .eq("id", movieId)
+    .maybeSingle();
+  const metaLanguage = languageFromMetadata(movieRow?.metadata);
+  const effectiveLanguage = canonicalLanguage(options?.language) || metaLanguage;
 
   if (rawInput.trim()) {
     const fromInput = await grabSourcesFromInput(rawInput);
@@ -1117,13 +1162,17 @@ export async function grabAndSaveMovieSources(
         (await verifySourcePlayable(item)) ? item : null,
       ),
     );
-    for (const item of verifiedInput) {
-      if (item) collected.push(item);
-    }
+    const inputItems = verifiedInput.filter(
+      (item): item is GrabbedSourceItem => Boolean(item),
+    );
+    collected.push(...inputItems, ...addLanguageVariants(inputItems, effectiveLanguage));
   }
 
   if (collected.length === 0 || !rawInput.trim() || options?.autoDiscover) {
-    const discovered = await autoDiscoverSourcesForMovie(movieId);
+    const discovered = await autoDiscoverSourcesForMovie(
+      movieId,
+      effectiveLanguage,
+    );
     collected.push(...discovered);
   }
 
@@ -1176,10 +1225,10 @@ export async function grabAndSaveMovieSources(
     type: item.type,
     quality: item.quality,
     language:
-      options?.language ||
+      canonicalLanguage(options?.language) ||
       canonicalLanguage(item.language) ||
       detectLanguageFromText(`${item.label} ${item.url}`) ||
-      metaLanguage ||
+      effectiveLanguage ||
       null,
     priority: item.priority,
     is_active: true,

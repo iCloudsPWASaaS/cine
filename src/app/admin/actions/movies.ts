@@ -9,6 +9,7 @@ import {
   grabAndSaveMovieSources,
 } from "@/lib/source-grabber";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { MovieMetadata, MovieSubtitle } from "@/lib/types";
 import {
   detectSourceProvider,
   slugify,
@@ -358,6 +359,103 @@ export async function toggleMovieSourceAction(formData: FormData) {
   if (error) fail(back, error.message);
   revalidateAll();
   done(back, "Source updated.");
+}
+
+function subtitleList(metadata: unknown): MovieSubtitle[] {
+  const list = (metadata as MovieMetadata | null)?.subtitles;
+  return Array.isArray(list) ? list : [];
+}
+
+async function saveSubtitleList(
+  movieId: string,
+  subtitles: MovieSubtitle[],
+): Promise<{ error: string | null; slug?: string }> {
+  const supabase = createAdminClient();
+  const { data: movie } = await supabase
+    .from("movies")
+    .select("slug, metadata")
+    .eq("id", movieId)
+    .maybeSingle();
+  const metadata = (movie?.metadata || {}) as MovieMetadata;
+  const { error } = await supabase
+    .from("movies")
+    .update({ metadata: { ...metadata, subtitles } })
+    .eq("id", movieId);
+  return { error: error?.message || null, slug: movie?.slug || undefined };
+}
+
+export async function addMovieSubtitleAction(formData: FormData) {
+  await requireAdmin();
+  const movieId = text(formData, "movie_id");
+  const back = movieId ? `/admin/movies/${movieId}` : "/admin/movies";
+  if (!movieId) fail(back, "Missing movie id.");
+
+  const label = text(formData, "label");
+  const url = text(formData, "url");
+  if (!label || !url) fail(back, "Subtitle label and URL are required.");
+
+  const supabase = createAdminClient();
+  const { data: movie } = await supabase
+    .from("movies")
+    .select("metadata")
+    .eq("id", movieId)
+    .maybeSingle();
+  const current = subtitleList(movie?.metadata);
+  current.push({
+    id: crypto.randomUUID(),
+    label,
+    url,
+    language: canonicalLanguage(text(formData, "language")) || null,
+    is_active: true,
+  });
+  const result = await saveSubtitleList(movieId, current);
+  if (result.error) fail(back, result.error);
+  revalidateAll(result.slug);
+  done(back, `Subtitle "${label}" added.`);
+}
+
+export async function toggleMovieSubtitleAction(formData: FormData) {
+  await requireAdmin();
+  const movieId = text(formData, "movie_id");
+  const back = movieId ? `/admin/movies/${movieId}` : "/admin/movies";
+  const id = text(formData, "id");
+  if (!movieId || !id) fail(back, "Missing subtitle id.");
+
+  const supabase = createAdminClient();
+  const { data: movie } = await supabase
+    .from("movies")
+    .select("metadata")
+    .eq("id", movieId)
+    .maybeSingle();
+  const subtitles = subtitleList(movie?.metadata).map((item) =>
+    item.id === id ? { ...item, is_active: !item.is_active } : item,
+  );
+  const result = await saveSubtitleList(movieId, subtitles);
+  if (result.error) fail(back, result.error);
+  revalidateAll(result.slug);
+  done(back, "Subtitle updated.");
+}
+
+export async function deleteMovieSubtitleAction(formData: FormData) {
+  await requireAdmin();
+  const movieId = text(formData, "movie_id");
+  const back = movieId ? `/admin/movies/${movieId}` : "/admin/movies";
+  const id = text(formData, "id");
+  if (!movieId || !id) fail(back, "Missing subtitle id.");
+
+  const supabase = createAdminClient();
+  const { data: movie } = await supabase
+    .from("movies")
+    .select("metadata")
+    .eq("id", movieId)
+    .maybeSingle();
+  const subtitles = subtitleList(movie?.metadata).filter(
+    (item) => item.id !== id,
+  );
+  const result = await saveSubtitleList(movieId, subtitles);
+  if (result.error) fail(back, result.error);
+  revalidateAll(result.slug);
+  done(back, "Subtitle removed.");
 }
 
 export async function setMovieSourceLanguageAction(formData: FormData) {

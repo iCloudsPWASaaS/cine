@@ -48,7 +48,16 @@ export interface Movie {
   updated_at: string;
 }
 
+export interface MovieSubtitle {
+  id: string;
+  label: string;
+  url: string;
+  language: string | null;
+  is_active: boolean;
+}
+
 export interface MovieMetadata {
+  subtitles?: MovieSubtitle[];
   demo?: boolean;
   license?: string;
   studio?: string;

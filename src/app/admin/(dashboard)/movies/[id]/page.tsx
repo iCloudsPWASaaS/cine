@@ -110,6 +110,7 @@ export default async function EditMoviePage({
           movieId={movie.id}
           sources={movie.sources}
           registry={registry}
+          subtitles={movie.metadata?.subtitles || []}
         />
 
         <MovieForm

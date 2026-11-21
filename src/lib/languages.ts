@@ -17,6 +17,24 @@ export const LANGUAGES: LanguageOption[] = [
 
 export const OTHER_LANGUAGE = "Other";
 
+const LANGUAGE_CODES: Record<string, string> = {
+  Hindi: "hi",
+  English: "en",
+  Bengali: "bn",
+  Tamil: "ta",
+  Telugu: "te",
+  Urdu: "ur",
+  Arabic: "ar",
+  Spanish: "es",
+  French: "fr",
+};
+
+export function languageCode(value: string | null | undefined): string | null {
+  const name = canonicalLanguage(value);
+  if (!name) return null;
+  return LANGUAGE_CODES[name] || null;
+}
+
 export function canonicalLanguage(
   value: string | null | undefined,
 ): string | null {

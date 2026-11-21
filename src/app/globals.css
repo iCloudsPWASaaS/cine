@@ -216,8 +216,10 @@ body {
 .player-card:has(:fullscreen),
 .player-card:has(.art-fullscreen),
 .player-card:has(.art-fullscreen-web),
+.player-card:has(.is-web-fullscreen),
 .player-stage:fullscreen,
-.player-stage:has(:fullscreen) {
+.player-stage:has(:fullscreen),
+.player-stage.is-web-fullscreen {
   overflow: visible !important;
   border-radius: 0 !important;
   border: 0 !important;
@@ -253,6 +255,65 @@ body {
   height: 100% !important;
   max-width: none !important;
   max-height: none !important;
+}
+
+.player-stage:fullscreen,
+.player-stage:-webkit-full-screen {
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: auto !important;
+  background: #000 !important;
+}
+
+.player-stage:fullscreen iframe,
+.player-stage.is-web-fullscreen iframe,
+.player-stage:fullscreen .art-video-player,
+.player-stage.is-web-fullscreen .art-video-player {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.art-video-player:fullscreen video,
+.art-video-player:-webkit-full-screen video,
+.art-video-player.art-fullscreen-web video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+
+.player-stage.is-web-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  aspect-ratio: auto !important;
+  border-radius: 0 !important;
+  z-index: 2147483647 !important;
+  background: #000 !important;
+}
+
+body.player-web-fullscreen-open {
+  overflow: hidden !important;
+}
+
+.player-fullscreen-button {
+  display: none;
+  place-items: center;
+}
+
+.player-stage[data-source-type="embed"] .player-fullscreen-button,
+.player-stage[data-source-type="youtube"] .player-fullscreen-button {
+  display: grid;
+}
+
+@media (pointer: coarse) {
+  .player-fullscreen-button {
+    display: grid !important;
+  }
+  .art-video-player .art-control-fullscreen,
+  .art-video-player .art-control-fullscreenWeb {
+    display: none !important;
+  }
 }
 
 .latest-swiper .swiper-slide {

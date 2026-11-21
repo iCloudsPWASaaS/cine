@@ -1,4 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
+import { languageCode } from "@/lib/languages";
+import type { MovieSubtitle } from "@/lib/types";
 
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
@@ -533,6 +535,32 @@ export function normalizeEmbedUrl(url: string) {
 export function externalUrl(url: string) {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+export function withSubtitleParams(
+  url: string,
+  subtitle?: MovieSubtitle | null,
+) {
+  if (!subtitle?.url) return url;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (/multiembed\.mov|superembed\.stream|embedbandit\.com/.test(host)) {
+      parsed.searchParams.set("sub_url", subtitle.url);
+      parsed.searchParams.set("sub_label", subtitle.label);
+    } else if (/vidlink\.pro/.test(host)) {
+      parsed.searchParams.set("sub_file", subtitle.url);
+      parsed.searchParams.set("sub_label", subtitle.label);
+    } else if (/vidfast\./.test(host)) {
+      const code = languageCode(subtitle.language) || "en";
+      parsed.searchParams.set("sub", code);
+    } else {
+      return url;
+    }
+    return parsed.toString();
   } catch {
     return url;
   }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { importMovieFromTmdb } from "@/lib/import";
+import { canonicalLanguage } from "@/lib/languages";
 import { grabAndSaveMovieSources } from "@/lib/source-grabber";
 import { pickTmdbResult, searchTmdb, tmdbConfigured } from "@/lib/tmdb";
 import type { TmdbSearchResult } from "@/lib/types";
@@ -21,6 +22,8 @@ export async function importMovieByNameAction(formData: FormData) {
   const rawYear = String(formData.get("year") || "").trim();
   const year = /^\d{4}$/.test(rawYear) ? rawYear : null;
   const country = String(formData.get("country") || "").trim() || null;
+  const rawLanguage = String(formData.get("language") || "").trim();
+  const language = canonicalLanguage(rawLanguage) || null;
   if (!query) fail("Enter a movie or series name.");
 
   if (!tmdbConfigured()) {
@@ -65,6 +68,7 @@ export async function importMovieByNameAction(formData: FormData) {
   try {
     const grabbed = await grabAndSaveMovieSources(saved.id, "", {
       autoDiscover: true,
+      language,
     });
     grabbedCount = grabbed.count;
   } catch {

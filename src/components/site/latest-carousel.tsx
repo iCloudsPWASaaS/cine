@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Info, Play } from "lucide-react";
+import { Info, Play } from "lucide-react";
 import type { Swiper as SwiperInstance } from "swiper";
 import { Autoplay, EffectCoverflow, Keyboard } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -67,27 +67,6 @@ export function LatestCarousel({ movies }: { movies: Movie[] }) {
             >
               <Info size={18} /> More Info
             </Link>
-          </div>
-
-          <div className="mt-8 flex items-center gap-3 sm:mt-10">
-            {slides.map((movie, index) => (
-              <button
-                key={movie.id}
-                type="button"
-                onClick={() => goTo(index)}
-                aria-label={`Show ${movie.title}`}
-                aria-current={index === activeIndex}
-                className={`h-1.5 rounded-full transition-all ${
-                  index === activeIndex
-                    ? "w-8 bg-brand"
-                    : "w-3 bg-white/30 hover:bg-white/60"
-                }`}
-              />
-            ))}
-            <span className="ml-2 text-[11px] font-semibold tabular-nums text-white/45">
-              {String(activeIndex + 1).padStart(2, "0")} /{" "}
-              {String(slides.length).padStart(2, "0")}
-            </span>
           </div>
         </div>
 
@@ -166,26 +145,22 @@ export function LatestCarousel({ movies }: { movies: Movie[] }) {
             })}
           </Swiper>
 
-          {loop ? (
-            <div className="mt-6 flex items-center justify-center gap-3 sm:mt-8">
+          <div className="mt-6 flex items-center justify-center gap-2.5">
+            {slides.map((movie, index) => (
               <button
+                key={movie.id}
                 type="button"
-                onClick={() => goTo(activeIndex - 1)}
-                aria-label="Previous slide"
-                className="grid h-10 w-10 place-items-center rounded-lg border border-white/15 bg-white/[0.06] text-white/75 backdrop-blur transition hover:border-brand/60 hover:bg-brand/25 hover:text-white"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <button
-                type="button"
-                onClick={() => goTo(activeIndex + 1)}
-                aria-label="Next slide"
-                className="grid h-10 w-10 place-items-center rounded-lg border border-white/15 bg-white/[0.06] text-white/75 backdrop-blur transition hover:border-brand/60 hover:bg-brand/25 hover:text-white"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-          ) : null}
+                onClick={() => goTo(index)}
+                aria-label={`Go to ${movie.title}`}
+                aria-current={index === activeIndex}
+                className={`h-1.5 rounded-full transition-all ${
+                  index === activeIndex
+                    ? "w-8 bg-brand"
+                    : "w-3 bg-white/30 hover:bg-white/60"
+                }`}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </section>

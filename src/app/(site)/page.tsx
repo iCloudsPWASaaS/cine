@@ -57,7 +57,12 @@ export default async function HomePage() {
     getAiringToday(12),
   ]);
 
-  const heroMovies = featured.length > 0 ? featured : latest;
+  const heroUsesUpcoming = upcoming.length > 0;
+  const heroMovies = heroUsesUpcoming
+    ? upcoming
+    : featured.length > 0
+      ? featured
+      : latest;
   const fallback = latest.length > 0 ? latest : featured;
 
   if (featured.length === 0 && latest.length === 0) {
@@ -81,12 +86,12 @@ export default async function HomePage() {
 
   return (
     <>
-      <LatestCarousel movies={heroMovies} />
+      <LatestCarousel
+        movies={heroMovies}
+        label={heroUsesUpcoming ? "Coming Soon" : "Featured"}
+      />
 
       <div className="container-page pb-10">
-        <ContinueWatchingRow />
-        <WatchlistRow />
-
         <MovieRow
           title="Trending This Week"
           eyebrow="What everyone is watching"
@@ -95,6 +100,18 @@ export default async function HomePage() {
           icon={TrendingUp}
           accent="violet"
         />
+
+        <MovieRow
+          title="Coming Soon"
+          eyebrow="Coming to Cinewood"
+          movies={upcoming}
+          href="/upcoming"
+          icon={CalendarDays}
+          accent="orange"
+        />
+
+        <ContinueWatchingRow />
+        <WatchlistRow />
 
         <MovieRow
           title="Hot Today"
@@ -130,15 +147,6 @@ export default async function HomePage() {
           href="/now-playing"
           icon={PlayCircle}
           accent="pink"
-        />
-
-        <MovieRow
-          title="Coming Soon"
-          eyebrow="Coming to Cinewood"
-          movies={upcoming}
-          href="/upcoming"
-          icon={CalendarDays}
-          accent="orange"
         />
 
         <MovieRow

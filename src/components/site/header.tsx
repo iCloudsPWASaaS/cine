@@ -29,6 +29,7 @@ import {
   WATCHLIST_EVENT,
   type CatalogItem,
 } from "@/lib/local-library";
+import type { Category } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface HeaderProps {
@@ -37,6 +38,7 @@ interface HeaderProps {
   genres: { name: string; slug: string }[];
   years: number[];
   countries: string[];
+  categories: Category[];
   catalog: CatalogItem[];
 }
 
@@ -64,6 +66,97 @@ const browseItems: DropdownItem[] = [
   { label: "Upcoming", href: "/upcoming", icon: CalendarDays },
   { label: "Airing Today", href: "/airing-today", icon: Clock3 },
 ];
+
+const fallbackCategories = [
+  "Bengali Movies",
+  "Bollywood Movies",
+  "South Indian Movies",
+  "Hollywood Movies",
+  "Japanese Movies",
+  "Korean Movies",
+  "Dual Audio Movies",
+  "Indonesia Movie",
+  "Chinese Movies",
+  "Bangla Web Series",
+];
+
+function CategoriesDropdown({
+  pathname,
+  categories,
+}: {
+  pathname: string;
+  categories: Category[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const items = categories.length
+    ? categories.map((item) => ({ name: item.name, slug: item.slug }))
+    : fallbackCategories.map((name) => ({
+        name,
+        slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      }));
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className={cn(
+          "flex items-center gap-1 px-3 py-2 text-xs font-semibold uppercase tracking-[0.03em] text-site-muted transition hover:text-white",
+          pathname === "/movies" && "text-white",
+        )}
+        aria-expanded={open}
+      >
+        Categories
+        <ChevronDown
+          size={12}
+          className={cn("transition", open && "rotate-180")}
+        />
+      </button>
+      {open ? (
+        <div className="absolute left-1/2 top-full z-50 w-[560px] -translate-x-1/2 rounded-xl border border-white/10 bg-site-panel/98 p-5 shadow-2xl backdrop-blur-xl">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand">
+            Categories
+          </p>
+          <h3 className="mt-1 text-xl font-bold tracking-tight text-white">
+            MOVIES
+          </h3>
+          <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1">
+            {items.map((item) => (
+              <Link
+                key={item.slug}
+                href={`/movies?category=${item.slug}`}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 rounded-md px-2 py-2 text-xs font-medium text-site-muted transition hover:bg-white/10 hover:text-white"
+              >
+                <span className="h-1 w-1 rounded-full bg-brand" />
+                {item.name}
+              </Link>
+            ))}
+          </div>
+          <div className="mt-4 border-t border-white/10 pt-3">
+            <Link
+              href="/movies"
+              onClick={() => setOpen(false)}
+              className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand transition hover:text-white"
+            >
+              View all movies →
+            </Link>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function BrowseDropdown({ pathname }: { pathname: string }) {
   const [open, setOpen] = useState(false);
@@ -123,6 +216,7 @@ export function Header({
   genres,
   years,
   countries,
+  categories,
   catalog,
 }: HeaderProps) {
   const pathname = usePathname();
@@ -147,6 +241,13 @@ export function Header({
     const movie = catalog[Math.floor(Math.random() * catalog.length)];
     router.push(`/watch/${movie.slug}`);
   };
+
+  const categoryLinks = categories.length
+    ? categories.map((item) => ({ name: item.name, slug: item.slug }))
+    : fallbackCategories.map((name) => ({
+        name,
+        slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      }));
 
   return (
     <>
@@ -186,6 +287,7 @@ export function Header({
                 </Link>
               );
             })}
+            <CategoriesDropdown pathname={pathname} categories={categories} />
             <BrowseDropdown pathname={pathname} />
           </nav>
 
@@ -257,6 +359,21 @@ export function Header({
                 </Link>
               ))}
             </nav>
+            <p className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.1em] text-site-dim">
+              Categories
+            </p>
+            <div className="flex flex-wrap gap-2 px-3 pb-3">
+              {categoryLinks.map((item) => (
+                <Link
+                  key={item.slug}
+                  href={`/movies?category=${item.slug}`}
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-md border border-brand/20 bg-brand/10 px-2.5 py-1 text-xs text-brand"
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </div>
             <p className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.1em] text-site-dim">
               Browse
             </p>

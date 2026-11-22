@@ -1,6 +1,7 @@
 import { Footer } from "@/components/site/footer";
 import { Header } from "@/components/site/header";
 import {
+  getCategories,
   getGenres,
   getLatest,
   getMovieCountries,
@@ -13,13 +14,15 @@ export default async function SiteLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [settings, genres, years, countries, catalog] = await Promise.all([
-    getSiteSettings(),
-    getGenres(),
-    getMovieYears(),
-    getMovieCountries(),
-    getLatest(120),
-  ]);
+  const [settings, genres, years, countries, categories, catalog] =
+    await Promise.all([
+      getSiteSettings(),
+      getGenres(),
+      getMovieYears(),
+      getMovieCountries(),
+      getCategories(),
+      getLatest(120),
+    ]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -29,6 +32,7 @@ export default async function SiteLayout({
         genres={genres}
         years={years}
         countries={countries}
+        categories={categories}
         catalog={catalog}
       />
       <main className="flex-1">{children}</main>

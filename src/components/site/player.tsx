@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import Artplayer from "artplayer";
 import Hls from "hls.js";
@@ -44,19 +43,8 @@ interface PlayerProps {
   autoplay?: boolean;
 }
 
-function subscribeToTouch() {
-  return () => {};
-}
-
-function getTouchSnapshot() {
-  return (
-    typeof window !== "undefined" &&
-    window.matchMedia("(pointer: coarse)").matches
-  );
-}
-
-function getServerTouchSnapshot() {
-  return false;
+function subtitleType(url: string | undefined | null) {
+  return /\.vtt(?:$|\?)/i.test(url || "") ? "vtt" : "srt";
 }
 
 function sourceKindLabel(source: MovieSource) {
@@ -122,8 +110,8 @@ function NativePlayer({
         setting: true,
         playbackRate: true,
         aspectRatio: true,
-        fullscreen: true,
-        fullscreenWeb: true,
+        fullscreen: false,
+        fullscreenWeb: false,
         pip: true,
         miniProgressBar: true,
         airplay: true,
@@ -131,9 +119,7 @@ function NativePlayer({
         hotkey: true,
         subtitle: {
           url: subtitleUrlRef.current || undefined,
-          type: /\.srt(?:$|\?)/i.test(subtitleUrlRef.current || "")
-            ? "srt"
-            : "vtt",
+          type: subtitleType(subtitleUrlRef.current),
           style: { color: "#fff", fontSize: "20px" },
         },
         moreVideoAttr: {
@@ -203,22 +189,30 @@ function NativePlayer({
     subtitleUrlRef.current = subtitleUrl;
     const art = artRef.current;
     if (!art) return;
-    try {
-      art.subtitle.url = subtitleUrl || "";
-      const video = art.video;
-      if (video?.textTracks) {
-        for (let index = 0; index < video.textTracks.length; index += 1) {
-          video.textTracks[index].mode = subtitleUrl ? "hidden" : "disabled";
-        }
+
+    art.subtitle.style({ color: "#fff", fontSize: "20px" });
+
+    if (subtitleUrl) {
+      void art.subtitle
+        .switch(subtitleUrl, {
+          url: subtitleUrl,
+          type: subtitleType(subtitleUrl),
+          style: { color: "#fff", fontSize: "20px" },
+        })
+        .catch(() => undefined);
+    } else {
+      art.subtitle.url = "";
+      const subtitle = containerRef.current?.querySelector<HTMLElement>(
+        ".art-subtitle",
+      );
+      if (subtitle) subtitle.innerHTML = "";
+    }
+
+    const video = art.video;
+    if (video?.textTracks) {
+      for (let index = 0; index < video.textTracks.length; index += 1) {
+        video.textTracks[index].mode = subtitleUrl ? "hidden" : "disabled";
       }
-      if (!subtitleUrl) {
-        const subtitle = containerRef.current?.querySelector<HTMLElement>(
-          ".art-subtitle",
-        );
-        if (subtitle) subtitle.innerHTML = "";
-      }
-    } catch {
-      // ignore
     }
   }, [subtitleUrl]);
 
@@ -249,11 +243,6 @@ function EmbedFrame({
     source.type === "youtube" || isSandboxSafeHost(url);
 
   useEffect(() => {
-    const originalOpen = window.open;
-    const blockedOpen: typeof window.open = () => null;
-
-    window.open = blockedOpen;
-
     const handleBlur = () => {
       if (document.activeElement?.tagName === "IFRAME") {
         window.setTimeout(() => {
@@ -267,11 +256,7 @@ function EmbedFrame({
     };
 
     window.addEventListener("blur", handleBlur);
-
-    return () => {
-      window.open = originalOpen;
-      window.removeEventListener("blur", handleBlur);
-    };
+    return () => window.removeEventListener("blur", handleBlur);
   }, []);
 
   return (
@@ -280,11 +265,7 @@ function EmbedFrame({
       src={url}
       title={source.label}
       className="h-full w-full border-0"
-      sandbox={
-        useStrictSandbox
-          ? "allow-scripts allow-same-origin allow-forms allow-presentation"
-          : undefined
-      }
+      sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
       allow={
         allowNativeFullscreen
           ? "autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer"
@@ -327,12 +308,6 @@ export function Player({
   );
   const tracked = useRef(false);
   const stageRef = useRef<HTMLDivElement>(null);
-  const isTouch = useSyncExternalStore(
-    subscribeToTouch,
-    getTouchSnapshot,
-    getServerTouchSnapshot,
-  );
-  const [nativeFullscreen, setNativeFullscreen] = useState(false);
   const [webFullscreen, setWebFullscreen] = useState(false);
   const [activeSubtitleId, setActiveSubtitleId] = useState<string | null>(null);
   const handleLoading = useCallback(
@@ -359,12 +334,6 @@ export function Player({
   );
 
   useEffect(() => {
-    const onChange = () => setNativeFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
-
-  useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
     stage.classList.toggle("is-web-fullscreen", webFullscreen);
@@ -375,27 +344,20 @@ export function Player({
     };
   }, [webFullscreen]);
 
-  const toggleFullscreen = useCallback(async () => {
-    const stage = stageRef.current;
-    if (!stage) return;
-    if (isTouch) {
-      setWebFullscreen((value) => !value);
-      return;
-    }
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      } else if (stage.requestFullscreen) {
-        await stage.requestFullscreen();
-      } else {
-        setWebFullscreen((value) => !value);
-      }
-    } catch {
-      setWebFullscreen((value) => !value);
-    }
-  }, [isTouch]);
+  useEffect(() => {
+    if (!webFullscreen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setWebFullscreen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [webFullscreen]);
 
-  const fullscreenActive = nativeFullscreen || webFullscreen;
+  const toggleFullscreen = useCallback(() => {
+    setWebFullscreen((value) => !value);
+  }, []);
+
+  const fullscreenActive = webFullscreen;
   const activeSubtitle =
     subtitles.find((item) => item.id === activeSubtitleId) || null;
 
@@ -469,7 +431,7 @@ export function Player({
             <EmbedFrame
               source={active}
               subtitle={activeSubtitle}
-              allowNativeFullscreen={!isTouch}
+              allowNativeFullscreen={false}
               onLoaded={() => setLoading(false)}
             />
           </div>

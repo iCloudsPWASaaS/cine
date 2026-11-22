@@ -139,6 +139,14 @@ export default async function WatchPage({ params }: WatchPageProps) {
               <span className="badge border-brand/30 bg-brand/10 text-brand">
                 {mediaLabel(movie.type)}
               </span>
+              {movie.category ? (
+                <Link
+                  href={`/movies?category=${movie.category.slug}`}
+                  className="badge border-brand/30 bg-brand/10 text-brand transition hover:bg-brand/20"
+                >
+                  {movie.category.name}
+                </Link>
+              ) : null}
               {movie.metadata?.demo ? (
                 <span className="badge text-emerald-300/80">
                   Open licence demo

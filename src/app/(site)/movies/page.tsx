@@ -20,6 +20,7 @@ export default async function MoviesPage({
       actionPath="/movies"
       heading="Movies"
       description="Feature films across every genre, decade and mood."
+      hideFilters
     />
   );
 }

@@ -1,23 +1,39 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { Info, Play } from "lucide-react";
 import type { Swiper as SwiperInstance } from "swiper";
 import { Autoplay, EffectCoverflow, Keyboard } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { MediaImage } from "@/components/site/media-image";
 import type { Movie } from "@/lib/types";
 
-export function LatestCarousel({ movies }: { movies: Movie[] }) {
+export function LatestCarousel({
+  movies,
+  label = "Now Showing",
+}: {
+  movies: Movie[];
+  label?: string;
+}) {
+  const router = useRouter();
   const swiperRef = useRef<SwiperInstance | null>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
   const slides = movies.slice(0, 8);
+  const initialIndex = Math.floor(slides.length / 2);
+  const [activeIndex, setActiveIndex] = useState(initialIndex);
+  const [ready, setReady] = useState(false);
 
   if (slides.length === 0) return null;
 
   const loop = slides.length > 3;
   const active = slides[activeIndex] || slides[0];
+  const setInitialSlide = (swiper: SwiperInstance) => {
+    requestAnimationFrame(() => {
+      swiper.update();
+      if (loop) swiper.slideToLoop(initialIndex, 0);
+      else swiper.slideTo(initialIndex, 0);
+      setReady(true);
+    });
+  };
   const goTo = (index: number) => {
     const swiper = swiperRef.current;
     if (!swiper) return;
@@ -27,139 +43,133 @@ export function LatestCarousel({ movies }: { movies: Movie[] }) {
   };
 
   return (
-    <section className="relative isolate min-h-[560px] overflow-hidden bg-site-bg sm:min-h-[640px]">
-      <div className="absolute inset-0">
+    <section className="relative isolate overflow-hidden bg-site-bg pb-8 pt-20 sm:pb-10 sm:pt-24">
+      <div className="pointer-events-none absolute inset-0 z-0">
         <MediaImage
-          key={active.id}
-          src={active.backdrop_url || active.poster_url}
-          alt={active.title}
+          key={active.slug}
+          src={active.poster_url || active.backdrop_url}
+          alt=""
+          priority
           loading="eager"
-          className="h-full w-full object-cover object-center brightness-[0.45] blur-[1px]"
+          className="h-full w-full object-cover object-top opacity-45 blur-[2px] saturate-[1.25]"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-site-bg via-site-bg/85 to-site-bg/25" />
-        <div className="absolute inset-0 bg-gradient-to-t from-site-bg via-transparent to-site-bg/50" />
-        <div className="absolute inset-0 bg-[radial-gradient(900px_480px_at_78%_35%,rgba(108,92,231,0.25),transparent_65%)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-site-bg/60 via-site-bg/85 to-site-bg" />
+        <div className="absolute inset-0 bg-[radial-gradient(700px_320px_at_50%_0%,rgba(108,92,231,0.16),transparent_70%)]" />
       </div>
 
-      <div className="container-page relative z-10 grid min-w-0 items-center gap-8 pb-12 pt-20 sm:gap-10 sm:pb-16 sm:pt-28 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:gap-14">
-        <div className="pointer-events-auto min-w-0 max-w-[520px]">
-          <h1
-            key={active.slug}
-            className="animate-fade-up text-3xl font-extrabold leading-[1.05] tracking-tight text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)] sm:text-5xl lg:text-6xl"
-          >
-            {active.title}
-          </h1>
-
-          <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-zinc-300 drop-shadow sm:text-base">
-            {active.overview || "A new addition to the Cinewood library."}
-          </p>
-
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href={`/watch/${active.slug}`}
-              className="flix-btn !px-5 !py-2.5 !text-sm sm:!px-7 sm:!py-3 sm:!text-base"
+      <div className="container-page relative z-10">
+        <div className="w-full">
+          <div className="min-w-0 text-center">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand">
+              {label}
+            </p>
+            <h1
+              key={active.slug}
+              className="animate-fade-up mt-1.5 text-xl font-extrabold leading-tight tracking-tight text-white drop-shadow sm:text-2xl lg:text-3xl"
             >
-              <Play size={18} fill="currentColor" /> Watch Now
-            </Link>
-            <Link
-              href={`/watch/${active.slug}#about`}
-              className="flix-btn flix-btn-secondary !px-5 !py-2.5 !text-sm sm:!px-7 sm:!py-3 sm:!text-base"
+              {active.title}
+            </h1>
+            <p
+              key={`${active.slug}-overview`}
+              className="animate-fade-up mx-auto mt-2 line-clamp-2 max-w-2xl text-xs leading-relaxed text-site-muted sm:text-sm"
             >
-              <Info size={18} /> More Info
-            </Link>
+              {active.overview || "A new addition to the Cinewood library."}
+            </p>
           </div>
-        </div>
 
-        <div className="relative min-w-0 overflow-hidden lg:overflow-visible">
-          <Swiper
-            className="hero-3d-swiper !overflow-hidden lg:!overflow-visible"
-            modules={[Autoplay, EffectCoverflow, Keyboard]}
-            effect="coverflow"
-            grabCursor
-            centeredSlides
-            loop={loop}
-            speed={800}
-            slidesPerView="auto"
-            spaceBetween={10}
-            breakpoints={{
-              480: { spaceBetween: 14 },
-              640: { spaceBetween: 16 },
-              1024: { spaceBetween: 20 },
-            }}
-            slideToClickedSlide
-            keyboard={{ enabled: true }}
-            autoplay={{
-              delay: 5500,
-              disableOnInteraction: false,
-              pauseOnMouseEnter: true,
-            }}
-            coverflowEffect={{
-              rotate: 6,
-              stretch: 0,
-              depth: 140,
-              scale: 0.92,
-              modifier: 1.1,
-              slideShadows: false,
-            }}
-            onSwiper={(swiper) => {
-              swiperRef.current = swiper;
-            }}
-            onSlideChange={(swiper) => setActiveIndex(swiper.realIndex)}
-          >
-            {slides.map((movie, index) => {
-              const isActive = index === activeIndex;
-              return (
-                <SwiperSlide
-                  key={movie.id}
-                  className="!h-auto !w-[150px] sm:!w-[190px] lg:!w-[240px]"
-                >
-                  <button
-                    type="button"
-                    onClick={() => goTo(index)}
-                    aria-label={`Show ${movie.title}`}
-                    aria-current={isActive}
-                    className={`group relative block w-full overflow-hidden rounded-2xl border bg-site-panel/80 text-left shadow-[0_24px_70px_-30px_rgba(0,0,0,0.95)] backdrop-blur transition-[border-color,box-shadow,opacity] duration-500 ${
-                      isActive
-                        ? "border-brand/60 shadow-[0_30px_90px_-24px_rgba(108,92,231,0.7)]"
-                        : "border-white/10 opacity-70 hover:border-white/25 hover:opacity-95"
-                    }`}
-                  >
-                    <div className="relative aspect-[2/3]">
-                      <MediaImage
-                        src={movie.poster_url || movie.backdrop_url}
-                        alt={movie.title}
-                        priority={index === 0}
-                        loading="eager"
-                        className="h-full w-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-site-bg via-site-bg/10 to-transparent" />
-                      <div className="absolute inset-x-3 bottom-3">
-                        <p className="line-clamp-2 text-xs font-bold text-white drop-shadow sm:text-sm">
-                          {movie.title}
-                        </p>
+          <div className="mt-5 min-w-0 sm:mt-6">
+            <Swiper
+              className={`hero-3d-swiper !overflow-hidden rounded-xl transition-opacity duration-300 ${
+                ready ? "opacity-100" : "opacity-0"
+              }`}
+              modules={[Autoplay, EffectCoverflow, Keyboard]}
+              effect="coverflow"
+              grabCursor
+              centeredSlides
+              loop={loop}
+              loopAdditionalSlides={4}
+              initialSlide={initialIndex}
+              speed={450}
+              slidesPerView={1.45}
+              spaceBetween={8}
+              breakpoints={{
+                480: { slidesPerView: 2.1, spaceBetween: 10 },
+                640: { slidesPerView: 3, spaceBetween: 12 },
+                1024: { slidesPerView: 4, spaceBetween: 14 },
+                1280: { slidesPerView: 4.8, spaceBetween: 16 },
+              }}
+              slideToClickedSlide
+              keyboard={{ enabled: true }}
+              autoplay={{
+                delay: 3200,
+                disableOnInteraction: false,
+                pauseOnMouseEnter: true,
+              }}
+              coverflowEffect={{
+                rotate: 2,
+                stretch: 0,
+                depth: 40,
+                scale: 0.96,
+                modifier: 1,
+                slideShadows: false,
+              }}
+              onSwiper={(swiper) => {
+                swiperRef.current = swiper;
+                setInitialSlide(swiper);
+              }}
+              onSlideChange={(swiper) => setActiveIndex(swiper.realIndex)}
+            >
+              {slides.map((movie, index) => {
+                const isActive = index === activeIndex;
+                return (
+                  <SwiperSlide key={movie.id} className="!h-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isActive) router.push(`/watch/${movie.slug}`);
+                        else goTo(index);
+                      }}
+                      aria-label={`Open ${movie.title}`}
+                      aria-current={isActive}
+                      className="hero-carousel-card group relative block w-full overflow-hidden rounded-xl text-left transition-opacity duration-300"
+                    >
+                      <div className="relative aspect-[2/3]">
+                        <MediaImage
+                          src={movie.poster_url || movie.backdrop_url}
+                          alt={movie.title}
+                          priority={index === 0}
+                          loading="eager"
+                          className="h-full w-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-site-bg/95 via-site-bg/5 to-transparent" />
+                        <div className="absolute inset-x-2.5 bottom-2.5">
+                          <p className="line-clamp-2 text-[11px] font-bold text-white drop-shadow sm:text-xs">
+                            {movie.title}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                </SwiperSlide>
-              );
-            })}
-          </Swiper>
+                    </button>
+                  </SwiperSlide>
+                );
+              })}
+            </Swiper>
 
-          <div className="mt-6 flex items-center justify-center gap-2.5">
-            {slides.map((movie, index) => (
-              <button
-                key={movie.id}
-                type="button"
-                onClick={() => goTo(index)}
-                aria-label={`Go to ${movie.title}`}
-                aria-current={index === activeIndex}
-                className={`h-1.5 rounded-full transition-all ${
-                  index === activeIndex
-                    ? "w-8 bg-brand"
-                    : "w-3 bg-white/30 hover:bg-white/60"
-                }`}
-              />
-            ))}
+            <div className="mt-5 flex items-center justify-center gap-2">
+              {slides.map((movie, index) => (
+                <button
+                  key={movie.id}
+                  type="button"
+                  onClick={() => goTo(index)}
+                  aria-label={`Go to ${movie.title}`}
+                  aria-current={index === activeIndex}
+                  className={`h-1 rounded-full transition-all ${
+                    index === activeIndex
+                      ? "w-6 bg-brand"
+                      : "w-2.5 bg-white/25 hover:bg-white/55"
+                  }`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>

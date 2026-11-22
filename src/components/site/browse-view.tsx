@@ -20,6 +20,7 @@ interface BrowseViewProps {
   actionPath?: string;
   heading?: string;
   description?: string;
+  hideFilters?: boolean;
 }
 
 function param(value: string | string[] | undefined) {
@@ -36,6 +37,7 @@ export async function BrowseView({
   actionPath = "/movies",
   heading,
   description,
+  hideFilters = false,
 }: BrowseViewProps) {
   const q = param(searchParams.q).trim();
   const type = forcedType || param(searchParams.type);
@@ -253,22 +255,25 @@ export async function BrowseView({
         </p>
       </div>
 
-      <div className="hide-scrollbar -mx-4 mb-5 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
-        {quickTabs.map((tab) => (
-          <Link
-            key={tab.label}
-            href={tab.href}
-            className={`shrink-0 rounded-lg border px-3.5 py-2 text-xs font-semibold transition ${
-              tab.active
-                ? "border-brand/40 bg-brand/15 text-white"
-                : "border-white/[0.06] bg-white/[0.04] text-site-muted hover:border-white/20 hover:text-white"
-            }`}
-          >
-            {tab.label}
-          </Link>
-        ))}
-      </div>
+      {!hideFilters ? (
+        <div className="hide-scrollbar -mx-4 mb-5 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+          {quickTabs.map((tab) => (
+            <Link
+              key={tab.label}
+              href={tab.href}
+              className={`shrink-0 rounded-lg border px-3.5 py-2 text-xs font-semibold transition ${
+                tab.active
+                  ? "border-brand/40 bg-brand/15 text-white"
+                  : "border-white/[0.06] bg-white/[0.04] text-site-muted hover:border-white/20 hover:text-white"
+              }`}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
+      ) : null}
 
+      {!hideFilters ? (
       <form
         action={actionPath}
         method="get"
@@ -365,8 +370,9 @@ export async function BrowseView({
           </div>
         </details>
       </form>
+      ) : null}
 
-      {!forcedGenre ? (
+      {!hideFilters && !forcedGenre ? (
         <div className="hide-scrollbar -mx-4 mb-6 flex items-center gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:mb-8 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
           <Link
             href={buildHref({ genre: null, page: null })}
@@ -392,7 +398,7 @@ export async function BrowseView({
         </div>
       ) : null}
 
-      {activeFilters.length > 0 ? (
+      {!hideFilters && activeFilters.length > 0 ? (
         <div className="mb-5 flex flex-wrap items-center gap-2">
           <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/35">
             Active filters
@@ -440,11 +446,15 @@ export async function BrowseView({
           </span>
           <p className="mt-4 text-lg font-bold text-white/75">No titles found</p>
           <p className="mt-1 max-w-sm text-sm text-white/40">
-            Try a different search, genre or year — or reset the filters.
+            {hideFilters
+              ? "Check back soon for more titles."
+              : "Try a different search, genre or year — or reset the filters."}
           </p>
-          <Link href={actionPath} className="flix-btn flix-btn-secondary mt-5">
-            Clear filters
-          </Link>
+          {!hideFilters ? (
+            <Link href={actionPath} className="flix-btn flix-btn-secondary mt-5">
+              Clear filters
+            </Link>
+          ) : null}
         </div>
       )}
 

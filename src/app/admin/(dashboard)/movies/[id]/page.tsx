@@ -56,6 +56,11 @@ export default async function EditMoviePage({
             <span className="badge border-white/10 text-white/45">
               {mediaLabel(movie.type)}
             </span>
+            {movie.category ? (
+              <span className="badge border-brand/30 bg-brand/10 text-brand">
+                {movie.category.name}
+              </span>
+            ) : null}
             <span
               className={`badge ${
                 movie.published

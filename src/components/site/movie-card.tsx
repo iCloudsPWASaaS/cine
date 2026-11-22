@@ -1,79 +1,87 @@
 import Link from "next/link";
-import { Play, Star } from "lucide-react";
+import { Play } from "lucide-react";
 import { MediaImage } from "@/components/site/media-image";
+import { WatchlistButton } from "@/components/site/watchlist-button";
 import type { Movie } from "@/lib/types";
-import {
-  cn,
-  formatRating,
-  mediaLabel,
-  yearOf,
-} from "@/lib/utils";
+import { cn, mediaLabel, yearOf } from "@/lib/utils";
 
 interface MovieCardProps {
   movie: Movie;
   rank?: number;
   className?: string;
+  showWatchlist?: boolean;
 }
 
-export function MovieCard({ movie, rank, className }: MovieCardProps) {
+export function MovieCard({
+  movie,
+  rank,
+  className,
+  showWatchlist = true,
+}: MovieCardProps) {
   return (
-    <Link
-      href={`/watch/${movie.slug}`}
-      className={cn("group block", className)}
-    >
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] shadow-[0_20px_60px_-30px_rgba(0,0,0,0.9)] transition duration-300 group-hover:-translate-y-1.5 group-hover:border-gold/30 group-hover:shadow-[0_28px_70px_-28px_rgba(242,200,107,0.25)]">
-        <div className="relative aspect-[2/3] overflow-hidden">
+    <div className={cn("group relative", className)}>
+      <Link href={`/watch/${movie.slug}`} className="block">
+        <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-site-card shadow-[0_10px_30px_-20px_rgba(0,0,0,0.9)] transition duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_16px_36px_-22px_rgba(108,92,231,0.9)]">
           <MediaImage
-            src={movie.poster_url}
+            src={movie.poster_url || movie.backdrop_url}
             alt={movie.title}
             title={movie.title}
-            className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/5 to-transparent opacity-80" />
+          <span className="absolute right-2 top-2 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+            HD
+          </span>
 
-          <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-white/10 bg-black/60 px-2 py-0.5 text-[10px] font-bold text-gold backdrop-blur sm:left-3 sm:top-3 sm:py-1 sm:text-[11px]">
-            <Star size={10} fill="currentColor" className="sm:h-[11px] sm:w-[11px]" />
-            {movie.vote_average ? formatRating(movie.vote_average) : "N/A"}
-          </div>
-
-          <div className="absolute right-2 top-2 sm:right-3 sm:top-3">
-            <span className="rounded-full border border-white/10 bg-black/60 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/60 backdrop-blur sm:py-1 sm:text-[10px]">
-              {mediaLabel(movie.type)}
-            </span>
-          </div>
-
-          <div className="absolute inset-0 grid place-items-center opacity-0 transition duration-300 group-hover:opacity-100">
-            <span className="grid h-12 w-12 place-items-center rounded-full bg-gold text-black shadow-[0_10px_40px_-8px_rgba(242,200,107,0.9)] transition group-hover:scale-110 sm:h-14 sm:w-14">
+          <div className="absolute inset-0 grid place-items-center bg-black/45 opacity-0 transition group-hover:opacity-100">
+            <span className="grid h-12 w-12 place-items-center rounded-full border-2 border-white/30 bg-brand/90 text-white backdrop-blur transition group-hover:scale-110">
               <Play size={20} fill="currentColor" className="ml-0.5" />
             </span>
           </div>
 
           {rank ? (
-            <div className="absolute bottom-1 left-2 select-none">
-              <span
-                className="display text-[50px] leading-none text-white/90 sm:text-[64px]"
-                style={{
-                  WebkitTextStroke: "2px rgba(255,255,255,0.55)",
-                  color: "rgba(6,7,11,0.55)",
-                }}
-              >
-                {rank}
-              </span>
-            </div>
+            <span
+              className="pointer-events-none absolute bottom-1 left-1 select-none font-sans text-[64px] font-black leading-[0.75] text-transparent"
+              style={{ WebkitTextStroke: "3px rgba(108,92,231,0.55)" }}
+            >
+              {rank}
+            </span>
           ) : null}
         </div>
-      </div>
 
-      <div className="mt-2.5 px-0.5 sm:mt-3">
-        <h3 className="truncate text-sm font-bold text-white/90 transition group-hover:text-gold sm:text-[15px]">
-          {movie.title}
-        </h3>
-        <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-white/40 sm:mt-1 sm:gap-2 sm:text-xs">
-          <span>{yearOf(movie.release_date) || "—"}</span>
-          <span className="h-1 w-1 rounded-full bg-white/25" />
-          <span>{mediaLabel(movie.type)}</span>
-        </p>
-      </div>
-    </Link>
+        <div className="px-0.5 pt-2">
+          <h3 className="truncate text-xs font-medium text-white sm:text-sm">
+            {movie.title}
+          </h3>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-site-dim">
+            <span>{yearOf(movie.release_date) || "—"}</span>
+            <span
+              className={cn(
+                "rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                movie.type === "series"
+                  ? "bg-sky-500/25 text-sky-300"
+                  : "bg-violet-500/25 text-violet-300",
+              )}
+            >
+              {movie.type === "series" ? "TV" : mediaLabel(movie.type)}
+            </span>
+          </div>
+        </div>
+      </Link>
+
+      {showWatchlist ? (
+        <WatchlistButton
+          item={{
+            id: movie.id,
+            slug: movie.slug,
+            title: movie.title,
+            poster_url: movie.poster_url,
+            backdrop_url: movie.backdrop_url,
+            type: movie.type,
+            release_date: movie.release_date,
+          }}
+          className="left-2 top-2"
+        />
+      ) : null}
+    </div>
   );
 }

@@ -228,6 +228,46 @@ export async function getTopRated(limit = 12): Promise<Movie[]> {
   return (data || []) as unknown as Movie[];
 }
 
+export async function getPopularByType(
+  type: "movie" | "series",
+  limit = 12,
+): Promise<Movie[]> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("movies")
+    .select(CARD_FIELDS)
+    .eq("published", true)
+    .eq("type", type)
+    .order("popularity", { ascending: false, nullsFirst: false })
+    .order("view_count", { ascending: false })
+    .limit(limit);
+  return (data || []) as unknown as Movie[];
+}
+
+export async function getAiringToday(limit = 12): Promise<Movie[]> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("movies")
+    .select(CARD_FIELDS)
+    .eq("published", true)
+    .eq("type", "series")
+    .order("popularity", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  return (data || []) as unknown as Movie[];
+}
+
+export async function getNowPlaying(limit = 12): Promise<Movie[]> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("movies")
+    .select(CARD_FIELDS)
+    .eq("published", true)
+    .eq("type", "movie")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (data || []) as unknown as Movie[];
+}
+
 export async function getCategoriesWithMovies(
   limitPerCategory = 12,
 ): Promise<{ category: Category; movies: Movie[] }[]> {
@@ -402,6 +442,7 @@ export async function browseMovies(
   if (restrictedIds) query = query.in("id", restrictedIds);
   if (categoryId) query = query.eq("category_id", categoryId);
   if (filters.upcoming === "1") query = query.eq("upcoming", true);
+  if (filters.trending === "1") query = query.eq("trending", true);
   if (filters.type === "movie" || filters.type === "series") {
     query = query.eq("type", filters.type);
   }

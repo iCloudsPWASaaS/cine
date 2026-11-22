@@ -6,9 +6,18 @@ interface MediaImageProps {
   alt: string;
   className?: string;
   title?: string;
+  priority?: boolean;
+  loading?: "eager" | "lazy";
 }
 
-export function MediaImage({ src, alt, className, title }: MediaImageProps) {
+export function MediaImage({
+  src,
+  alt,
+  className,
+  title,
+  priority,
+  loading,
+}: MediaImageProps) {
   if (!src) {
     return (
       <div
@@ -25,9 +34,10 @@ export function MediaImage({ src, alt, className, title }: MediaImageProps) {
     <img
       src={src}
       alt={alt}
-      loading="lazy"
-      decoding="async"
-      className={className}
+        loading={priority ? "eager" : loading || "lazy"}
+        fetchPriority={priority ? "high" : undefined}
+        decoding="async"
+        className={className}
     />
   );
 }

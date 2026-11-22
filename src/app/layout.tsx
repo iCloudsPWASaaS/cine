@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "swiper/css";
 import "swiper/css/effect-coverflow";
+import "swiper/css/effect-fade";
 import "swiper/css/pagination";
 import "./globals.css";
 

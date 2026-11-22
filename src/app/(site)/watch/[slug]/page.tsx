@@ -18,6 +18,7 @@ import {
 import { MediaImage } from "@/components/site/media-image";
 import { MovieRow } from "@/components/site/movie-row";
 import { Player } from "@/components/site/player";
+import { WatchlistButton } from "@/components/site/watchlist-button";
 import {
   getMovieBySlug,
   getRelatedMovies,
@@ -99,21 +100,21 @@ export default async function WatchPage({ params }: WatchPageProps) {
           alt={movie.title}
           className="h-full w-full object-cover object-center"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/60 to-ink/20" />
-        <div className="absolute inset-0 bg-gradient-to-r from-ink/95 via-ink/35 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-site-bg via-site-bg/60 to-site-bg/20" />
+        <div className="absolute inset-0 bg-gradient-to-r from-site-bg/95 via-site-bg/35 to-transparent" />
       </div>
 
       <div className="container-page relative z-10 -mt-[200px] sm:-mt-[290px]">
         <nav className="mb-5 flex items-center gap-2 text-xs text-white/40 sm:mb-7">
-          <Link href="/" className="transition hover:text-gold">
+          <Link href="/" className="transition hover:text-brand">
             Home
           </Link>
           <span>/</span>
           <Link
-            href={movie.type === "series" ? "/series" : "/movies"}
-            className="transition hover:text-gold"
+            href={movie.type === "series" ? "/tv" : "/movies"}
+            className="transition hover:text-brand"
           >
-            {movie.type === "series" ? "Series" : "Movies"}
+            {movie.type === "series" ? "TV Shows" : "Movies"}
           </Link>
           <span>/</span>
           <span className="max-w-[160px] truncate text-white/60 sm:max-w-[220px]">
@@ -135,7 +136,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
 
           <div className="max-w-3xl animate-fade-up">
             <div className="mb-3 flex flex-wrap items-center gap-1.5 sm:mb-4 sm:gap-2">
-              <span className="badge border-gold/30 bg-gold/10 text-gold">
+              <span className="badge border-brand/30 bg-brand/10 text-brand">
                 {mediaLabel(movie.type)}
               </span>
               {movie.metadata?.demo ? (
@@ -156,7 +157,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
             ) : null}
 
             {movie.tagline ? (
-              <p className="mt-2.5 text-xs font-medium text-gold/80 sm:mt-3 sm:text-sm">
+              <p className="mt-2.5 text-xs font-medium text-violet-300/80 sm:mt-3 sm:text-sm">
                 “{movie.tagline}”
               </p>
             ) : null}
@@ -178,7 +179,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
                 </span>
               ) : null}
               {rating ? (
-                <span className="inline-flex items-center gap-1.5 text-gold">
+                <span className="inline-flex items-center gap-1.5 text-brand">
                   <Star size={14} fill="currentColor" /> {rating} / 10
                 </span>
               ) : null}
@@ -192,7 +193,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
                 <Link
                   key={genre.id}
                   href={`/genre/${genre.slug}`}
-                  className="badge text-white/60 transition hover:border-gold/40 hover:text-gold"
+                  className="badge text-white/60 transition hover:border-brand/40 hover:text-brand"
                 >
                   {genre.name}
                 </Link>
@@ -204,19 +205,24 @@ export default async function WatchPage({ params }: WatchPageProps) {
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-2.5 sm:mt-7 sm:gap-3">
-              <Link href="#player" className="btn-gold !px-5 !py-2.5 sm:!px-7 sm:!py-3">
-                <Play size={16} fill="currentColor" /> Play now
+              <Link href="#player" className="flix-btn !px-6 !py-3">
+                <Play size={16} fill="currentColor" /> Watch Now
               </Link>
-              {movie.trailer_url ? (
-                <a
-                  href={movie.trailer_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-ghost !px-5 !py-2.5 sm:!px-6 sm:!py-3"
-                >
-                  <Film size={15} /> Watch trailer
-                </a>
-              ) : null}
+              <a href="#about" className="flix-btn flix-btn-secondary !px-6 !py-3">
+                <Film size={15} /> More Info
+              </a>
+              <WatchlistButton
+                item={{
+                  id: movie.id,
+                  slug: movie.slug,
+                  title: movie.title,
+                  poster_url: movie.poster_url,
+                  backdrop_url: movie.backdrop_url,
+                  type: movie.type,
+                  release_date: movie.release_date,
+                }}
+                className="!static !h-10 !w-10 !opacity-100 !rounded-lg"
+              />
             </div>
           </div>
         </div>
@@ -227,6 +233,9 @@ export default async function WatchPage({ params }: WatchPageProps) {
           <div id="player" className="scroll-mt-20 sm:scroll-mt-24">
             <Player
               slug={movie.slug}
+              title={movie.title}
+              type={movie.type}
+              releaseDate={movie.release_date}
               poster={movie.backdrop_url || movie.poster_url}
               sources={movie.sources}
               subtitles={(movie.metadata?.subtitles || []).filter(
@@ -236,7 +245,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
             />
           </div>
 
-          <section className="card mt-6 p-5 sm:mt-8 sm:p-8">
+          <section id="about" className="card mt-6 scroll-mt-20 p-5 sm:mt-8 sm:p-8">
             <h2 className="display text-2xl tracking-[0.04em] sm:text-3xl">
               About the film
             </h2>
@@ -308,7 +317,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
         <aside className="space-y-5">
           <div className="card p-5">
             <h3 className="flex items-center gap-2 text-sm font-extrabold">
-              <Clapperboard size={16} className="text-gold" /> Details
+              <Clapperboard size={16} className="text-brand" /> Details
             </h3>
             <div className="mt-3">
               <DetailRow
@@ -373,11 +382,11 @@ export default async function WatchPage({ params }: WatchPageProps) {
           </div>
 
           <Link
-            href={movie.type === "series" ? "/series" : "/movies"}
-            className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-white/40 transition hover:text-gold"
+            href={movie.type === "series" ? "/tv" : "/movies"}
+            className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-white/40 transition hover:text-brand"
           >
             <ArrowLeft size={14} /> Back to{" "}
-            {movie.type === "series" ? "series" : "movies"}
+            {movie.type === "series" ? "TV Shows" : "movies"}
           </Link>
         </aside>
       </div>

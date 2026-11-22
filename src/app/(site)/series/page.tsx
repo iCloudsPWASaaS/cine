@@ -1,12 +1,6 @@
-import type { Metadata } from "next";
-import { BrowseView } from "@/components/site/browse-view";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
-
-export const metadata: Metadata = {
-  title: "Series",
-  description: "Browse every series in the Cinewood library.",
-};
 
 export default async function SeriesPage({
   searchParams,
@@ -14,13 +8,14 @@ export default async function SeriesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  return (
-    <BrowseView
-      searchParams={params}
-      forcedType="series"
-      actionPath="/series"
-      heading="Series"
-      description="Episodic storytelling, season by season."
-    />
-  );
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (Array.isArray(value)) {
+      value.forEach((item) => query.append(key, item));
+    } else if (value !== undefined) {
+      query.append(key, value);
+    }
+  }
+  const suffix = query.toString();
+  redirect(`/tv${suffix ? `?${suffix}` : ""}`);
 }

@@ -152,6 +152,7 @@ export interface BrowseFilters {
   year?: string;
   country?: string;
   upcoming?: string;
+  trending?: string;
   sort?: string;
   page?: number;
 }

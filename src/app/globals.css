@@ -10,6 +10,13 @@
   --color-gold-soft: #ffe4a6;
   --color-ember: #e4572e;
   --color-mist: #98a1b2;
+  --color-brand: #6c5ce7;
+  --color-brand-hover: #5a4bd1;
+  --color-site-bg: #1a1a3e;
+  --color-site-panel: #222255;
+  --color-site-card: #252352;
+  --color-site-muted: #a0a0c0;
+  --color-site-dim: #7070a0;
   --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     sans-serif;
   --font-display: "Bebas Neue", "Arial Narrow", Impact, sans-serif;
@@ -26,8 +33,8 @@ html {
 
 body {
   margin: 0;
-  background: var(--color-ink);
-  color: #f5f6f8;
+  background: var(--color-site-bg);
+  color: #e8e8f0;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -80,7 +87,7 @@ body {
   }
 
   .input {
-    @apply w-full rounded-xl border border-white/10 bg-white/[0.045] px-4 py-2.5 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-gold/60 focus:bg-white/[0.07];
+    @apply w-full rounded-xl border border-white/10 bg-white/[0.045] px-4 py-2.5 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-brand/60 focus:bg-white/[0.07] focus:ring-2 focus:ring-brand/20;
   }
 
   .label {
@@ -93,6 +100,34 @@ body {
 
   .badge {
     @apply inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[11px] font-bold tracking-wide;
+  }
+
+  .flix-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-[0_6px_20px_-8px_rgba(108,92,231,0.8)] transition hover:bg-brand-hover hover:shadow-[0_10px_26px_-8px_rgba(108,92,231,0.9)];
+  }
+
+  .flix-btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-white/[0.14];
+  }
+
+  .flix-btn-sm {
+    @apply !px-3 !py-1.5 !text-xs;
+  }
+
+  .flix-icon-box {
+    @apply grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.06];
+  }
+
+  .flix-server-btn {
+    @apply rounded-md border border-white/[0.08] bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-site-muted transition hover:border-white/20 hover:bg-white/[0.12] hover:text-white;
+  }
+
+  .flix-server-btn-active {
+    @apply border-transparent bg-brand text-white shadow-[0_4px_14px_-4px_rgba(108,92,231,0.9)];
+  }
+
+  .flix-pill {
+    @apply inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1 text-xs font-semibold text-site-muted;
   }
 
   .admin-card {
@@ -202,7 +237,7 @@ body {
 }
 
 .art-video-player {
-  --art-theme: #f2c86b !important;
+  --art-theme: #6c5ce7 !important;
   font-family: var(--font-sans) !important;
   width: 100%;
   height: 100%;
@@ -327,8 +362,8 @@ body.player-web-fullscreen-open {
 }
 
 .latest-swiper .swiper-slide-active .carousel-card {
-  border-color: rgba(242, 200, 107, 0.45);
-  box-shadow: 0 30px 90px -34px rgba(242, 200, 107, 0.28);
+  border-color: rgba(108, 92, 231, 0.55);
+  box-shadow: 0 30px 90px -34px rgba(108, 92, 231, 0.35);
 }
 
 .latest-swiper .swiper-pagination-bullet {
@@ -342,5 +377,5 @@ body.player-web-fullscreen-open {
 .latest-swiper .swiper-pagination-bullet-active {
   width: 24px;
   border-radius: 999px;
-  background: var(--color-gold);
+  background: var(--color-brand);
 }

@@ -22,6 +22,7 @@ import {
   Tv,
 } from "lucide-react";
 import { groupSourcesByLanguage, normalizeLanguage } from "@/lib/languages";
+import { saveProgress } from "@/lib/local-library";
 import type { MovieSource, MovieSubtitle } from "@/lib/types";
 import {
   cn,
@@ -34,6 +35,9 @@ import {
 
 interface PlayerProps {
   slug: string;
+  title: string;
+  type: string;
+  releaseDate?: string | null;
   poster?: string | null;
   sources: MovieSource[];
   subtitles?: MovieSubtitle[];
@@ -76,16 +80,19 @@ function NativePlayer({
   autoplay,
   subtitleUrl,
   onLoadingChange,
+  onProgress,
 }: {
   source: MovieSource;
   poster?: string | null;
   autoplay: boolean;
   subtitleUrl?: string | null;
   onLoadingChange: (loading: boolean) => void;
+  onProgress: (position: number, duration: number) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const artRef = useRef<Artplayer | null>(null);
   const subtitleUrlRef = useRef(subtitleUrl);
+  const lastProgressRef = useRef(0);
 
   useEffect(() => {
     let art: Artplayer | null = null;
@@ -111,7 +118,7 @@ function NativePlayer({
         poster: poster || undefined,
         autoplay,
         volume: 0.75,
-        theme: "#f2c86b",
+        theme: "#6c5ce7",
         setting: true,
         playbackRate: true,
         aspectRatio: true,
@@ -161,6 +168,17 @@ function NativePlayer({
       art.on("playing", () => onLoadingChange(false));
       art.on("waiting", () => onLoadingChange(true));
       art.on("error", () => onLoadingChange(false));
+      art.on("timeupdate", () => {
+        const player = artRef.current;
+        if (!player) return;
+        const now = Date.now();
+        if (now - lastProgressRef.current < 5000) return;
+        lastProgressRef.current = now;
+        onProgress(
+          Number(player.currentTime) || 0,
+          Number(player.duration) || 0,
+        );
+      });
     };
 
     boot();
@@ -179,7 +197,7 @@ function NativePlayer({
         // ignore
       }
     };
-  }, [source.url, poster, autoplay, onLoadingChange]);
+  }, [source.url, poster, autoplay, onLoadingChange, onProgress]);
 
   useEffect(() => {
     subtitleUrlRef.current = subtitleUrl;
@@ -281,6 +299,9 @@ function EmbedFrame({
 
 export function Player({
   slug,
+  title,
+  type,
+  releaseDate,
   poster,
   sources,
   subtitles = [],
@@ -317,6 +338,24 @@ export function Player({
   const handleLoading = useCallback(
     (value: boolean) => setLoading(value),
     [],
+  );
+  const handleProgress = useCallback(
+    (position: number, duration: number) => {
+      saveProgress(
+        {
+          id: slug,
+          slug,
+          title,
+          poster_url: poster || null,
+          backdrop_url: poster,
+          type,
+          release_date: releaseDate || null,
+        },
+        position,
+        duration,
+      );
+    },
+    [slug, title, type, releaseDate, poster],
   );
 
   useEffect(() => {
@@ -404,7 +443,9 @@ export function Player({
               style={{ backgroundImage: poster ? `url(${poster})` : undefined }}
             />
             <div className="relative z-10 max-w-md">
-              <span className="badge mb-3 text-gold">Official provider</span>
+              <span className="badge mb-3 text-violet-300/80">
+                Official provider
+              </span>
               <p className="text-xl font-extrabold text-white">
                 {active.label}
               </p>
@@ -417,7 +458,7 @@ export function Player({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={track}
-                className="btn-gold mt-6"
+                className="flix-btn mt-6"
               >
                 <ExternalLink size={16} /> Open {externalUrl(active.url)}
               </a>
@@ -440,6 +481,7 @@ export function Player({
               autoplay={autoplay}
               subtitleUrl={activeSubtitle?.url}
               onLoadingChange={handleLoading}
+              onProgress={handleProgress}
             />
           </div>
         )}
@@ -450,7 +492,7 @@ export function Player({
             onClick={toggleFullscreen}
             aria-label={fullscreenActive ? "Exit full screen" : "Full screen"}
             title={fullscreenActive ? "Exit full screen" : "Full screen"}
-            className="player-fullscreen-button absolute right-3 top-3 z-[90] h-9 w-9 place-items-center rounded-lg border border-white/15 bg-black/60 text-white/85 backdrop-blur transition hover:border-gold/50 hover:text-gold"
+            className="player-fullscreen-button absolute right-3 top-3 z-[90] h-9 w-9 place-items-center rounded-lg border border-white/15 bg-black/60 text-white/85 backdrop-blur transition hover:border-brand/50 hover:text-brand"
           >
             {fullscreenActive ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
           </button>
@@ -460,7 +502,7 @@ export function Player({
           <div className="pointer-events-none absolute inset-0 z-[80] grid place-items-center bg-black/35">
             <div className="flex flex-col items-center gap-3">
               <span className="relative grid h-16 w-16 place-items-center rounded-full border border-white/10 bg-black/60 backdrop-blur">
-                <span className="absolute inset-1 animate-spin rounded-full border-2 border-white/10 border-t-gold" />
+                <span className="absolute inset-1 animate-spin rounded-full border-2 border-white/10 border-t-brand" />
                 <Play
                   size={19}
                   fill="currentColor"
@@ -478,7 +520,7 @@ export function Player({
       <div className="border-t border-white/[0.07] bg-[#0c0e15] px-4 py-4 sm:px-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-white/40">
-            <Tv size={14} className="text-gold" />
+            <Tv size={14} className="text-violet-300" />
             Sources
             <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/60">
               {sources.length}
@@ -489,7 +531,7 @@ export function Player({
         {subtitles.length > 0 ? (
           <div className="mb-3 flex flex-wrap items-center gap-1.5">
             <span className="mr-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
-              <Subtitles size={12} className="text-gold" /> Subtitles
+              <Subtitles size={12} className="text-violet-300" /> Subtitles
             </span>
             {[
               { id: null, label: "Off" },
@@ -500,10 +542,8 @@ export function Player({
                 type="button"
                 onClick={() => setActiveSubtitleId(option.id)}
                 className={cn(
-                  "rounded-full border px-2.5 py-1 text-[11px] font-bold transition",
-                  activeSubtitleId === option.id
-                    ? "border-gold/40 bg-gold/10 text-gold"
-                    : "border-white/10 bg-white/[0.04] text-white/45 hover:border-white/25 hover:text-white/80",
+                  "flix-pill transition hover:text-white",
+                  activeSubtitleId === option.id && "flix-server-btn-active",
                 )}
               >
                 {option.label}
@@ -515,7 +555,7 @@ export function Player({
         {sources.length > 0 ? (
           <div className="mb-3 flex flex-wrap items-center gap-1.5">
             <span className="mr-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
-              <Languages size={12} className="text-gold" /> Audio
+              <Languages size={12} className="text-violet-300" /> Audio
             </span>
             {[
               { name: "All", count: sources.length },
@@ -529,10 +569,8 @@ export function Player({
                 type="button"
                 onClick={() => setActiveLanguage(group.name)}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold transition",
-                  activeLanguage === group.name
-                    ? "border-gold/40 bg-gold/10 text-gold"
-                    : "border-white/10 bg-white/[0.04] text-white/45 hover:border-white/25 hover:text-white/80",
+                  "flix-pill inline-flex items-center gap-1.5 transition hover:text-white",
+                  activeLanguage === group.name && "flix-server-btn-active",
                 )}
               >
                 {group.name}
@@ -554,18 +592,16 @@ export function Player({
                   if (source.type !== "external") track();
                 }}
                 className={cn(
-                  "group inline-flex items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition sm:gap-2 sm:px-3.5 sm:py-2.5",
-                  active?.id === source.id
-                    ? "border-gold/50 bg-gold/10 text-white"
-                    : "border-white/10 bg-white/[0.03] text-white/60 hover:border-white/20 hover:text-white",
+                  "flix-server-btn group inline-flex items-center gap-2.5",
+                  active?.id === source.id && "flix-server-btn-active",
                 )}
               >
                 <span
                   className={cn(
                     "grid h-8 w-8 shrink-0 place-items-center rounded-lg",
                     active?.id === source.id
-                      ? "bg-gold text-black"
-                      : "bg-white/5 text-white/40 group-hover:text-gold",
+                      ? "bg-brand text-white"
+                      : "bg-white/5 text-white/40 group-hover:text-white",
                   )}
                 >
                   {source.type === "external" ? (

@@ -1,115 +1,187 @@
 "use client";
 
 import Link from "next/link";
-import { Play, Star } from "lucide-react";
-import { Autoplay, EffectCoverflow, Pagination } from "swiper/modules";
+import { useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Info, Play } from "lucide-react";
+import type { Swiper as SwiperInstance } from "swiper";
+import { Autoplay, EffectCoverflow, Keyboard } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { MediaImage } from "@/components/site/media-image";
 import type { Movie } from "@/lib/types";
-import {
-  formatRating,
-  formatRuntime,
-  mediaLabel,
-  yearOf,
-} from "@/lib/utils";
 
 export function LatestCarousel({ movies }: { movies: Movie[] }) {
-  if (movies.length === 0) return null;
+  const swiperRef = useRef<SwiperInstance | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const slides = movies.slice(0, 8);
 
-  const slides =
-    movies.length >= 10
-      ? movies
-      : Array.from({ length: Math.ceil(10 / movies.length) }, () => movies)
-          .flat()
-          .slice(0, Math.max(10, movies.length));
+  if (slides.length === 0) return null;
+
+  const loop = slides.length > 3;
+  const active = slides[activeIndex] || slides[0];
+  const goTo = (index: number) => {
+    const swiper = swiperRef.current;
+    if (!swiper) return;
+    const next = (index + slides.length) % slides.length;
+    if (loop) swiper.slideToLoop(next);
+    else swiper.slideTo(next);
+  };
 
   return (
-    <section className="relative overflow-hidden pt-[88px] sm:pt-[104px]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1100px_520px_at_45%_0%,rgba(48,160,185,0.34),transparent_62%),radial-gradient(820px_420px_at_76%_8%,rgba(176,150,126,0.22),transparent_60%),radial-gradient(900px_460px_at_8%_0%,rgba(18,70,90,0.36),transparent_62%),linear-gradient(to_bottom,rgba(12,48,62,0.18),transparent_78%)]" />
+    <section className="relative isolate min-h-[640px] overflow-hidden bg-site-bg">
+      <div className="absolute inset-0">
+        <MediaImage
+          key={active.id}
+          src={active.backdrop_url || active.poster_url}
+          alt={active.title}
+          loading="eager"
+          className="h-full w-full object-cover object-center brightness-[0.45] blur-[1px]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-site-bg via-site-bg/85 to-site-bg/25" />
+        <div className="absolute inset-0 bg-gradient-to-t from-site-bg via-transparent to-site-bg/50" />
+        <div className="absolute inset-0 bg-[radial-gradient(900px_480px_at_78%_35%,rgba(108,92,231,0.25),transparent_65%)]" />
+      </div>
 
-      <div className="container-page relative">
-        <Swiper
-          className="latest-swiper !pb-12 sm:!pb-14"
-          modules={[Autoplay, EffectCoverflow, Pagination]}
-          effect="coverflow"
-          grabCursor
-          centeredSlides
-          loop={slides.length > 3}
-          speed={700}
-          spaceBetween={14}
-          slidesPerView={1.55}
-          autoplay={{
-            delay: 3200,
-            disableOnInteraction: false,
-            pauseOnMouseEnter: true,
-          }}
-          pagination={{ clickable: true }}
-          coverflowEffect={{
-            rotate: 0,
-            stretch: 0,
-            depth: 110,
-            modifier: 1.6,
-            slideShadows: false,
-          }}
-          breakpoints={{
-            480: { slidesPerView: 2.2, spaceBetween: 16 },
-            640: { slidesPerView: 2.8, spaceBetween: 18 },
-            768: { slidesPerView: 3.4, spaceBetween: 20 },
-            1024: { slidesPerView: 4.2, spaceBetween: 22 },
-            1280: { slidesPerView: 5, spaceBetween: 24 },
-          }}
-        >
-          {slides.map((movie, index) => (
-            <SwiperSlide key={`${movie.id}-${index}`} className="!h-auto">
-              <Link
-                href={`/watch/${movie.slug}`}
-                className="carousel-card group block overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] shadow-[0_24px_70px_-30px_rgba(0,0,0,0.9)] transition duration-300 hover:border-gold/40"
+      <div className="container-page relative z-10 grid items-center gap-10 pb-14 pt-24 sm:pb-16 sm:pt-28 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:gap-14">
+        <div className="pointer-events-auto max-w-[520px]">
+          <h1
+            key={active.slug}
+            className="animate-fade-up text-4xl font-extrabold leading-[1.05] tracking-tight text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)] sm:text-6xl"
+          >
+            {active.title}
+          </h1>
+
+          <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-zinc-300 drop-shadow sm:text-base">
+            {active.overview || "A new addition to the Cinewood library."}
+          </p>
+
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              href={`/watch/${active.slug}`}
+              className="flix-btn !px-7 !py-3 !text-base"
+            >
+              <Play size={18} fill="currentColor" /> Watch Now
+            </Link>
+            <Link
+              href={`/watch/${active.slug}#about`}
+              className="flix-btn flix-btn-secondary !px-7 !py-3 !text-base"
+            >
+              <Info size={18} /> More Info
+            </Link>
+          </div>
+
+          <div className="mt-10 flex items-center gap-3">
+            {slides.map((movie, index) => (
+              <button
+                key={movie.id}
+                type="button"
+                onClick={() => goTo(index)}
+                aria-label={`Show ${movie.title}`}
+                aria-current={index === activeIndex}
+                className={`h-1.5 rounded-full transition-all ${
+                  index === activeIndex
+                    ? "w-8 bg-brand"
+                    : "w-3 bg-white/30 hover:bg-white/60"
+                }`}
+              />
+            ))}
+            <span className="ml-2 text-[11px] font-semibold tabular-nums text-white/45">
+              {String(activeIndex + 1).padStart(2, "0")} /{" "}
+              {String(slides.length).padStart(2, "0")}
+            </span>
+          </div>
+        </div>
+
+        <div className="relative">
+          <Swiper
+            className="hero-3d-swiper !overflow-visible"
+            modules={[Autoplay, EffectCoverflow, Keyboard]}
+            effect="coverflow"
+            grabCursor
+            centeredSlides
+            loop={loop}
+            speed={800}
+            slidesPerView="auto"
+            spaceBetween={16}
+            slideToClickedSlide
+            keyboard={{ enabled: true }}
+            autoplay={{
+              delay: 5500,
+              disableOnInteraction: false,
+              pauseOnMouseEnter: true,
+            }}
+            coverflowEffect={{
+              rotate: 8,
+              stretch: 0,
+              depth: 220,
+              scale: 0.88,
+              modifier: 1.25,
+              slideShadows: false,
+            }}
+            onSwiper={(swiper) => {
+              swiperRef.current = swiper;
+            }}
+            onSlideChange={(swiper) => setActiveIndex(swiper.realIndex)}
+          >
+            {slides.map((movie, index) => {
+              const isActive = index === activeIndex;
+              return (
+                <SwiperSlide
+                  key={movie.id}
+                  className="!h-auto !w-[190px] sm:!w-[220px] lg:!w-[240px]"
+                >
+                  <button
+                    type="button"
+                    onClick={() => goTo(index)}
+                    aria-label={`Show ${movie.title}`}
+                    aria-current={isActive}
+                    className={`group relative block w-full overflow-hidden rounded-2xl border bg-site-panel/80 text-left shadow-[0_24px_70px_-30px_rgba(0,0,0,0.95)] backdrop-blur transition-[border-color,box-shadow,opacity] duration-500 ${
+                      isActive
+                        ? "border-brand/60 shadow-[0_30px_90px_-24px_rgba(108,92,231,0.7)]"
+                        : "border-white/10 opacity-70 hover:border-white/25 hover:opacity-95"
+                    }`}
+                  >
+                    <div className="relative aspect-[2/3]">
+                      <MediaImage
+                        src={movie.poster_url || movie.backdrop_url}
+                        alt={movie.title}
+                        priority={index === 0}
+                        loading="eager"
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-site-bg via-site-bg/10 to-transparent" />
+                      <div className="absolute inset-x-3 bottom-3">
+                        <p className="line-clamp-2 text-sm font-bold text-white drop-shadow">
+                          {movie.title}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                </SwiperSlide>
+              );
+            })}
+          </Swiper>
+
+          {loop ? (
+            <div className="mt-8 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => goTo(activeIndex - 1)}
+                aria-label="Previous slide"
+                className="grid h-10 w-10 place-items-center rounded-lg border border-white/15 bg-white/[0.06] text-white/75 backdrop-blur transition hover:border-brand/60 hover:bg-brand/25 hover:text-white"
               >
-                <div className="relative aspect-[2/3] overflow-hidden">
-                  <MediaImage
-                    src={movie.poster_url || movie.backdrop_url}
-                    alt={movie.title}
-                    title={movie.title}
-                    className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent" />
-
-                  <div className="absolute inset-x-3 top-3 flex items-center justify-between gap-2 sm:inset-x-3.5 sm:top-3.5">
-                    <span className="rounded-full border border-white/15 bg-black/60 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white/75 backdrop-blur">
-                      {mediaLabel(movie.type)}
-                    </span>
-                    {movie.vote_average ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-gold/25 bg-black/60 px-2 py-0.5 text-[11px] font-bold text-gold backdrop-blur">
-                        <Star size={11} fill="currentColor" />
-                        {formatRating(movie.vote_average)}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <div className="absolute inset-0 grid place-items-center opacity-0 transition duration-300 group-hover:opacity-100">
-                    <span className="grid h-12 w-12 place-items-center rounded-full bg-gold text-black shadow-[0_10px_30px_-8px_rgba(242,200,107,0.9)] transition duration-300 group-hover:scale-110 sm:h-14 sm:w-14">
-                      <Play size={19} fill="currentColor" className="ml-0.5" />
-                    </span>
-                  </div>
-
-                  <div className="absolute inset-x-3 bottom-3 sm:inset-x-3.5 sm:bottom-3.5">
-                    <p className="flex items-center gap-1.5 text-[10px] font-semibold text-white/60 sm:text-[11px]">
-                      {yearOf(movie.release_date) || "—"}
-                      <span className="h-1 w-1 rounded-full bg-white/35" />
-                      {movie.runtime ? formatRuntime(movie.runtime) : "New"}
-                    </p>
-                    <h2 className="mt-1 truncate text-base font-extrabold text-white transition group-hover:text-gold sm:text-lg">
-                      {movie.title}
-                    </h2>
-                    <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-white/50 sm:text-xs">
-                      {movie.overview || "A new addition to the Cinewood library."}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            </SwiperSlide>
-          ))}
-        </Swiper>
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => goTo(activeIndex + 1)}
+                aria-label="Next slide"
+                className="grid h-10 w-10 place-items-center rounded-lg border border-white/15 bg-white/[0.06] text-white/75 backdrop-blur transition hover:border-brand/60 hover:bg-brand/25 hover:text-white"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
     </section>
   );

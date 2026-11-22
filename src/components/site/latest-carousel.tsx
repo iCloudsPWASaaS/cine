@@ -27,7 +27,7 @@ export function LatestCarousel({ movies }: { movies: Movie[] }) {
   };
 
   return (
-    <section className="relative isolate min-h-[640px] overflow-hidden bg-site-bg">
+    <section className="relative isolate min-h-[560px] overflow-hidden bg-site-bg sm:min-h-[640px]">
       <div className="absolute inset-0">
         <MediaImage
           key={active.id}
@@ -41,11 +41,11 @@ export function LatestCarousel({ movies }: { movies: Movie[] }) {
         <div className="absolute inset-0 bg-[radial-gradient(900px_480px_at_78%_35%,rgba(108,92,231,0.25),transparent_65%)]" />
       </div>
 
-      <div className="container-page relative z-10 grid items-center gap-10 pb-14 pt-24 sm:pb-16 sm:pt-28 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:gap-14">
-        <div className="pointer-events-auto max-w-[520px]">
+      <div className="container-page relative z-10 grid min-w-0 items-center gap-8 pb-12 pt-20 sm:gap-10 sm:pb-16 sm:pt-28 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:gap-14">
+        <div className="pointer-events-auto min-w-0 max-w-[520px]">
           <h1
             key={active.slug}
-            className="animate-fade-up text-4xl font-extrabold leading-[1.05] tracking-tight text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)] sm:text-6xl"
+            className="animate-fade-up text-3xl font-extrabold leading-[1.05] tracking-tight text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.65)] sm:text-5xl lg:text-6xl"
           >
             {active.title}
           </h1>
@@ -57,19 +57,19 @@ export function LatestCarousel({ movies }: { movies: Movie[] }) {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href={`/watch/${active.slug}`}
-              className="flix-btn !px-7 !py-3 !text-base"
+              className="flix-btn !px-5 !py-2.5 !text-sm sm:!px-7 sm:!py-3 sm:!text-base"
             >
               <Play size={18} fill="currentColor" /> Watch Now
             </Link>
             <Link
               href={`/watch/${active.slug}#about`}
-              className="flix-btn flix-btn-secondary !px-7 !py-3 !text-base"
+              className="flix-btn flix-btn-secondary !px-5 !py-2.5 !text-sm sm:!px-7 sm:!py-3 sm:!text-base"
             >
               <Info size={18} /> More Info
             </Link>
           </div>
 
-          <div className="mt-10 flex items-center gap-3">
+          <div className="mt-8 flex items-center gap-3 sm:mt-10">
             {slides.map((movie, index) => (
               <button
                 key={movie.id}
@@ -91,9 +91,9 @@ export function LatestCarousel({ movies }: { movies: Movie[] }) {
           </div>
         </div>
 
-        <div className="relative">
+        <div className="relative min-w-0 overflow-hidden lg:overflow-visible">
           <Swiper
-            className="hero-3d-swiper !overflow-visible"
+            className="hero-3d-swiper !overflow-hidden lg:!overflow-visible"
             modules={[Autoplay, EffectCoverflow, Keyboard]}
             effect="coverflow"
             grabCursor
@@ -101,7 +101,12 @@ export function LatestCarousel({ movies }: { movies: Movie[] }) {
             loop={loop}
             speed={800}
             slidesPerView="auto"
-            spaceBetween={16}
+            spaceBetween={10}
+            breakpoints={{
+              480: { spaceBetween: 14 },
+              640: { spaceBetween: 16 },
+              1024: { spaceBetween: 20 },
+            }}
             slideToClickedSlide
             keyboard={{ enabled: true }}
             autoplay={{
@@ -110,11 +115,11 @@ export function LatestCarousel({ movies }: { movies: Movie[] }) {
               pauseOnMouseEnter: true,
             }}
             coverflowEffect={{
-              rotate: 8,
+              rotate: 6,
               stretch: 0,
-              depth: 220,
-              scale: 0.88,
-              modifier: 1.25,
+              depth: 140,
+              scale: 0.92,
+              modifier: 1.1,
               slideShadows: false,
             }}
             onSwiper={(swiper) => {
@@ -127,7 +132,7 @@ export function LatestCarousel({ movies }: { movies: Movie[] }) {
               return (
                 <SwiperSlide
                   key={movie.id}
-                  className="!h-auto !w-[190px] sm:!w-[220px] lg:!w-[240px]"
+                  className="!h-auto !w-[150px] sm:!w-[190px] lg:!w-[240px]"
                 >
                   <button
                     type="button"
@@ -150,7 +155,7 @@ export function LatestCarousel({ movies }: { movies: Movie[] }) {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-site-bg via-site-bg/10 to-transparent" />
                       <div className="absolute inset-x-3 bottom-3">
-                        <p className="line-clamp-2 text-sm font-bold text-white drop-shadow">
+                        <p className="line-clamp-2 text-xs font-bold text-white drop-shadow sm:text-sm">
                           {movie.title}
                         </p>
                       </div>
@@ -162,7 +167,7 @@ export function LatestCarousel({ movies }: { movies: Movie[] }) {
           </Swiper>
 
           {loop ? (
-            <div className="mt-8 flex items-center justify-center gap-3">
+            <div className="mt-6 flex items-center justify-center gap-3 sm:mt-8">
               <button
                 type="button"
                 onClick={() => goTo(activeIndex - 1)}

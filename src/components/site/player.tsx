@@ -62,11 +62,59 @@ function sourceKindLabel(source: MovieSource) {
   }
 }
 
+const SUBTITLE_STYLE = { color: "#fff", fontSize: "20px" } as const;
+
+function subtitleLoader(url: string) {
+  return `/api/subtitles?url=${encodeURIComponent(url)}`;
+}
+
+function normalizeSubtitle(text: string, type: "vtt" | "srt") {
+  const clean = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").trim();
+  if (type === "vtt") {
+    return /^WEBVTT/i.test(clean) ? `${clean}\n` : `WEBVTT\n\n${clean}\n`;
+  }
+  const body = clean
+    .replace(/^\s*\d+\s*\n(?=\d{2}:\d{2}:\d{2}[,.])/gm, "")
+    .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
+  return `WEBVTT\n\n${body}\n`;
+}
+
+type FullscreenDocument = Document & {
+  webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => Promise<void> | void;
+};
+
+type FullscreenTarget = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void;
+};
+
+function browserFullscreenElement() {
+  const doc = document as FullscreenDocument;
+  return doc.fullscreenElement || doc.webkitFullscreenElement || null;
+}
+
+function requestBrowserFullscreen(element: HTMLElement) {
+  const target = element as FullscreenTarget;
+  if (target.requestFullscreen) return Promise.resolve(target.requestFullscreen());
+  if (target.webkitRequestFullscreen) {
+    return Promise.resolve(target.webkitRequestFullscreen());
+  }
+  return Promise.reject(new Error("Fullscreen is not supported"));
+}
+
+function exitBrowserFullscreen() {
+  const doc = document as FullscreenDocument;
+  if (doc.exitFullscreen) return Promise.resolve(doc.exitFullscreen());
+  if (doc.webkitExitFullscreen) return Promise.resolve(doc.webkitExitFullscreen());
+  return Promise.resolve();
+}
+
 function NativePlayer({
   source,
   poster,
   autoplay,
   subtitleUrl,
+  subtitleLabel,
   onLoadingChange,
   onProgress,
 }: {
@@ -74,13 +122,114 @@ function NativePlayer({
   poster?: string | null;
   autoplay: boolean;
   subtitleUrl?: string | null;
+  subtitleLabel?: string | null;
   onLoadingChange: (loading: boolean) => void;
   onProgress: (position: number, duration: number) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const artRef = useRef<Artplayer | null>(null);
   const subtitleUrlRef = useRef(subtitleUrl);
+  const subtitleLabelRef = useRef(subtitleLabel);
+  const subtitleRequestRef = useRef(0);
+  const subtitleBlobRef = useRef<string | null>(null);
+  const subtitleSwitchLockRef = useRef<Promise<unknown>>(Promise.resolve());
+  const applySubtitleRef = useRef<
+    (art: Artplayer, url?: string | null, label?: string | null) => Promise<void>
+  >(async () => undefined);
   const lastProgressRef = useRef(0);
+
+  const switchSubtitle = useCallback(
+    (
+      art: Artplayer,
+      url: string,
+      option: Parameters<Artplayer["subtitle"]["switch"]>[1],
+    ) => {
+      const task = subtitleSwitchLockRef.current.then(() =>
+        art.subtitle.switch(url, option),
+      );
+      subtitleSwitchLockRef.current = task.catch(() => undefined);
+      return task;
+    },
+    [],
+  );
+
+  const clearSubtitle = useCallback(async (art: Artplayer) => {
+    const requestId = ++subtitleRequestRef.current;
+    const url = URL.createObjectURL(
+      new Blob(["WEBVTT\n\n"], { type: "text/vtt" }),
+    );
+    try {
+      await switchSubtitle(art, url, {
+        type: "vtt",
+        name: "",
+        style: SUBTITLE_STYLE,
+      });
+      if (requestId !== subtitleRequestRef.current) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+      if (subtitleBlobRef.current && subtitleBlobRef.current !== url) {
+        URL.revokeObjectURL(subtitleBlobRef.current);
+      }
+      subtitleBlobRef.current = url;
+      const subtitle = containerRef.current?.querySelector<HTMLElement>(
+        ".art-subtitle",
+      );
+      if (subtitle) subtitle.innerHTML = "";
+    } catch {
+      URL.revokeObjectURL(url);
+    }
+  }, [switchSubtitle]);
+
+  const applySubtitle = useCallback(
+    async (art: Artplayer, url?: string | null, label?: string | null) => {
+      const requestId = ++subtitleRequestRef.current;
+      art.subtitle.style(SUBTITLE_STYLE);
+      if (!url) {
+        await clearSubtitle(art);
+        return;
+      }
+      try {
+        const response = await fetch(subtitleLoader(url), {
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error("Subtitle request failed");
+        const raw = await response.text();
+        if (requestId !== subtitleRequestRef.current) return;
+        const vtt = normalizeSubtitle(raw, subtitleType(url));
+        const blobUrl = URL.createObjectURL(
+          new Blob([vtt], { type: "text/vtt" }),
+        );
+        await switchSubtitle(art, blobUrl, {
+          type: "vtt",
+          name: label || "Subtitle",
+          style: SUBTITLE_STYLE,
+        });
+        if (requestId !== subtitleRequestRef.current) {
+          URL.revokeObjectURL(blobUrl);
+          return;
+        }
+        if (subtitleBlobRef.current && subtitleBlobRef.current !== blobUrl) {
+          URL.revokeObjectURL(subtitleBlobRef.current);
+        }
+        subtitleBlobRef.current = blobUrl;
+        const subtitle = containerRef.current?.querySelector<HTMLElement>(
+          ".art-subtitle",
+        );
+        if (subtitle) subtitle.innerHTML = "";
+      } catch {
+        if (requestId === subtitleRequestRef.current) {
+          art.notice.show = "Subtitle could not be loaded";
+          await clearSubtitle(art);
+        }
+      }
+    },
+    [clearSubtitle, switchSubtitle],
+  );
+
+  useEffect(() => {
+    applySubtitleRef.current = applySubtitle;
+  }, [applySubtitle]);
 
   useEffect(() => {
     let art: Artplayer | null = null;
@@ -110,6 +259,7 @@ function NativePlayer({
         setting: true,
         playbackRate: true,
         aspectRatio: true,
+        playsInline: true,
         fullscreen: false,
         fullscreenWeb: false,
         pip: true,
@@ -118,16 +268,19 @@ function NativePlayer({
         autoPlayback: true,
         hotkey: true,
         subtitle: {
-          url: subtitleUrlRef.current || undefined,
-          type: subtitleType(subtitleUrlRef.current),
-          style: { color: "#fff", fontSize: "20px" },
+          url: "",
+          name: "",
+          type: "vtt",
+          style: SUBTITLE_STYLE,
+          escape: true,
+          encoding: "utf-8",
+          onVttLoad: (vtt: string) => vtt,
         },
         moreVideoAttr: {
           playsInline: true,
           "webkit-playsinline": true,
           "x5-playsinline": true,
           "x5-video-player-type": "h5",
-          "x5-video-orientation": "landscape",
         } as Record<string, string | boolean>,
         customType: {
           m3u8: (video: HTMLVideoElement, url: string) => {
@@ -145,6 +298,11 @@ function NativePlayer({
         },
       });
       artRef.current = art;
+      void applySubtitleRef.current(
+        art,
+        subtitleUrlRef.current,
+        subtitleLabelRef.current,
+      );
 
       art.on("play", () => {
         if (art) art.notice.show = "";
@@ -171,7 +329,12 @@ function NativePlayer({
 
     return () => {
       cancelled = true;
+      subtitleRequestRef.current += 1;
       artRef.current = null;
+      if (subtitleBlobRef.current) {
+        URL.revokeObjectURL(subtitleBlobRef.current);
+        subtitleBlobRef.current = null;
+      }
       try {
         hls?.destroy();
       } catch {
@@ -187,34 +350,11 @@ function NativePlayer({
 
   useEffect(() => {
     subtitleUrlRef.current = subtitleUrl;
+    subtitleLabelRef.current = subtitleLabel;
     const art = artRef.current;
     if (!art) return;
-
-    art.subtitle.style({ color: "#fff", fontSize: "20px" });
-
-    if (subtitleUrl) {
-      void art.subtitle
-        .switch(subtitleUrl, {
-          url: subtitleUrl,
-          type: subtitleType(subtitleUrl),
-          style: { color: "#fff", fontSize: "20px" },
-        })
-        .catch(() => undefined);
-    } else {
-      art.subtitle.url = "";
-      const subtitle = containerRef.current?.querySelector<HTMLElement>(
-        ".art-subtitle",
-      );
-      if (subtitle) subtitle.innerHTML = "";
-    }
-
-    const video = art.video;
-    if (video?.textTracks) {
-      for (let index = 0; index < video.textTracks.length; index += 1) {
-        video.textTracks[index].mode = subtitleUrl ? "hidden" : "disabled";
-      }
-    }
-  }, [subtitleUrl]);
+    void applySubtitle(art, subtitleUrl, subtitleLabel);
+  }, [subtitleUrl, subtitleLabel, applySubtitle]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }
@@ -222,16 +362,10 @@ function NativePlayer({
 interface EmbedFrameProps {
   source: MovieSource;
   subtitle?: MovieSubtitle | null;
-  allowNativeFullscreen: boolean;
   onLoaded: () => void;
 }
 
-function EmbedFrame({
-  source,
-  subtitle,
-  allowNativeFullscreen,
-  onLoaded,
-}: EmbedFrameProps) {
+function EmbedFrame({ source, subtitle, onLoaded }: EmbedFrameProps) {
   const url = withSubtitleParams(
     source.type === "youtube"
       ? youtubeEmbed(source.url)
@@ -261,17 +395,13 @@ function EmbedFrame({
 
   return (
     <iframe
-      key={`${url}-${useStrictSandbox ? "sandboxed" : "compatible"}-${allowNativeFullscreen ? "native-fs" : "app-fs"}`}
+      key={`${url}-${useStrictSandbox ? "sandboxed" : "compatible"}`}
       src={url}
       title={source.label}
       className="h-full w-full border-0"
       sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-      allow={
-        allowNativeFullscreen
-          ? "autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer"
-          : "autoplay; picture-in-picture; encrypted-media; gyroscope; accelerometer"
-      }
-      allowFullScreen={allowNativeFullscreen}
+      allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer"
+      allowFullScreen
       referrerPolicy="origin"
       onLoad={onLoaded}
     />
@@ -309,7 +439,15 @@ export function Player({
   const tracked = useRef(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const [webFullscreen, setWebFullscreen] = useState(false);
+  const [nativeFullscreen, setNativeFullscreen] = useState(false);
   const [activeSubtitleId, setActiveSubtitleId] = useState<string | null>(null);
+  const subtitleOptions = useMemo(
+    () => [
+      { id: null, label: "Off" },
+      ...subtitles.map((item) => ({ id: item.id, label: item.label })),
+    ],
+    [subtitles],
+  );
   const handleLoading = useCallback(
     (value: boolean) => setLoading(value),
     [],
@@ -334,6 +472,24 @@ export function Player({
   );
 
   useEffect(() => {
+    const onChange = () => {
+      const element = browserFullscreenElement();
+      const stage = stageRef.current;
+      setNativeFullscreen(
+        Boolean(
+          stage && element && (element === stage || stage.contains(element)),
+        ),
+      );
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+    };
+  }, []);
+
+  useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
     stage.classList.toggle("is-web-fullscreen", webFullscreen);
@@ -353,11 +509,44 @@ export function Player({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [webFullscreen]);
 
-  const toggleFullscreen = useCallback(() => {
-    setWebFullscreen((value) => !value);
-  }, []);
+  const exitFullscreenMode = useCallback(async () => {
+    setWebFullscreen(false);
+    if (nativeFullscreen) {
+      try {
+        await exitBrowserFullscreen();
+      } catch {
+        // ignore
+      }
+      setNativeFullscreen(false);
+    }
+  }, [nativeFullscreen]);
 
-  const fullscreenActive = webFullscreen;
+  const toggleFullscreen = useCallback(async () => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    if (nativeFullscreen || webFullscreen) {
+      await exitFullscreenMode();
+      return;
+    }
+    try {
+      await requestBrowserFullscreen(stage);
+      setNativeFullscreen(true);
+      const orientation = screen.orientation as
+        | (ScreenOrientation & { lock?: (value: string) => Promise<void> })
+        | undefined;
+      if (orientation?.lock) {
+        try {
+          await orientation.lock("landscape");
+        } catch {
+          // ignore
+        }
+      }
+    } catch {
+      setWebFullscreen(true);
+    }
+  }, [nativeFullscreen, webFullscreen, exitFullscreenMode]);
+
+  const fullscreenActive = nativeFullscreen || webFullscreen;
   const activeSubtitle =
     subtitles.find((item) => item.id === activeSubtitleId) || null;
 
@@ -431,7 +620,6 @@ export function Player({
             <EmbedFrame
               source={active}
               subtitle={activeSubtitle}
-              allowNativeFullscreen={false}
               onLoaded={() => setLoading(false)}
             />
           </div>
@@ -442,6 +630,7 @@ export function Player({
               poster={poster}
               autoplay={autoplay}
               subtitleUrl={activeSubtitle?.url}
+              subtitleLabel={activeSubtitle?.label}
               onLoadingChange={handleLoading}
               onProgress={handleProgress}
             />
@@ -458,6 +647,27 @@ export function Player({
           >
             {fullscreenActive ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
           </button>
+        ) : null}
+
+        {fullscreenActive && subtitles.length > 0 ? (
+          <div className="player-subtitle-overlay hide-scrollbar absolute top-14 right-3 left-3 z-[95] flex items-center gap-1.5 overflow-x-auto rounded-xl border border-white/10 bg-black/60 p-1.5 backdrop-blur">
+            <span className="mr-1 flex shrink-0 items-center gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/50">
+              <Subtitles size={12} className="text-violet-300" /> Subtitles
+            </span>
+            {subtitleOptions.map((option) => (
+              <button
+                key={option.id || "off"}
+                type="button"
+                onClick={() => setActiveSubtitleId(option.id)}
+                className={cn(
+                  "flix-pill shrink-0 transition hover:text-white",
+                  activeSubtitleId === option.id && "flix-server-btn-active",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         ) : null}
 
         {loading && active && active.type !== "external" ? (
@@ -495,10 +705,7 @@ export function Player({
             <span className="mr-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
               <Subtitles size={12} className="text-violet-300" /> Subtitles
             </span>
-            {[
-              { id: null, label: "Off" },
-              ...subtitles.map((item) => ({ id: item.id, label: item.label })),
-            ].map((option) => (
+            {subtitleOptions.map((option) => (
               <button
                 key={option.id || "off"}
                 type="button"

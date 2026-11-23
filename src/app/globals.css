@@ -294,15 +294,26 @@ body {
 
 .player-stage:fullscreen,
 .player-stage:-webkit-full-screen {
-  width: 100% !important;
-  height: 100% !important;
+  position: relative !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
   aspect-ratio: auto !important;
   background: #000 !important;
 }
 
+html:has(.player-stage:fullscreen),
+body:has(.player-stage:fullscreen),
+html:has(.player-stage:-webkit-full-screen),
+body:has(.player-stage:-webkit-full-screen) {
+  overflow: hidden !important;
+}
+
 .player-stage:fullscreen iframe,
+.player-stage:-webkit-full-screen iframe,
 .player-stage.is-web-fullscreen iframe,
 .player-stage:fullscreen .art-video-player,
+.player-stage:-webkit-full-screen .art-video-player,
 .player-stage.is-web-fullscreen .art-video-player {
   width: 100% !important;
   height: 100% !important;
@@ -329,6 +340,11 @@ body {
 
 body.player-web-fullscreen-open {
   overflow: hidden !important;
+}
+
+.player-subtitle-overlay {
+  max-width: calc(100% - 1.5rem);
+  pointer-events: auto;
 }
 
 .player-fullscreen-button {

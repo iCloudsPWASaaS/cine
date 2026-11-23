@@ -3,11 +3,9 @@ import {
   ArrowRight,
   CalendarDays,
   Clapperboard,
-  Clock3,
   Film,
   Flame,
   Layers3,
-  PlayCircle,
   Star,
   TrendingUp,
   Tv,
@@ -20,7 +18,6 @@ import { LatestCarousel } from "@/components/site/latest-carousel";
 import { MovieRow } from "@/components/site/movie-row";
 import { SpecialCategorySection } from "@/components/site/special-category-section";
 import {
-  getAiringToday,
   getCategories,
   getCategoriesWithMovies,
   getFeatured,
@@ -46,11 +43,10 @@ export default async function HomePage() {
     popularMovies,
     popularSeries,
     nowPlaying,
-    airingToday,
     categories,
   ] = await Promise.all([
     getFeatured(6),
-    getTrending(12),
+    getTrending(15),
     getUpcoming(12),
     getLatest(16),
     getTopRated(12),
@@ -58,7 +54,6 @@ export default async function HomePage() {
     getPopularByType("movie", 12),
     getPopularByType("series", 12),
     getNowPlaying(12),
-    getAiringToday(12),
     getCategories(),
   ]);
 
@@ -141,24 +136,6 @@ export default async function HomePage() {
           href="/tv"
           icon={Tv}
           accent="violet"
-        />
-
-        <MovieRow
-          title="In Theaters Now"
-          eyebrow="Fresh releases"
-          movies={nowPlaying.length > 0 ? nowPlaying : fallback}
-          href="/now-playing"
-          icon={PlayCircle}
-          accent="pink"
-        />
-
-        <MovieRow
-          title="On Air Now"
-          eyebrow="TV episodes dropping"
-          movies={airingToday.length > 0 ? airingToday : popularSeries}
-          href="/airing-today"
-          icon={Clock3}
-          accent="green"
         />
 
         <MovieRow

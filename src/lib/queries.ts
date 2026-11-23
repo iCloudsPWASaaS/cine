@@ -11,6 +11,20 @@ import type {
   SiteSettings,
 } from "@/lib/types";
 
+function relevanceScore(movie: Movie, query: string): number {
+  const term = query.trim().toLowerCase();
+  if (!term) return 0;
+  const title = String(movie.title || "").toLowerCase();
+  const original = String(movie.original_title || "").toLowerCase();
+  const overview = String(movie.overview || "").toLowerCase();
+
+  if (title === term || original === term) return 100;
+  if (title.startsWith(term) || original.startsWith(term)) return 80;
+  if (title.includes(term) || original.includes(term)) return 60;
+  if (overview.includes(term)) return 20;
+  return 0;
+}
+
 const CARD_FIELDS = [
   "id",
   "slug",
@@ -468,7 +482,15 @@ export async function browseMovies(
     }
   }
 
+  const relevanceSort = filters.sort === "relevance" && Boolean(filters.q);
+
   switch (filters.sort) {
+    case "relevance":
+      query = query.order("release_date", {
+        ascending: false,
+        nullsFirst: false,
+      });
+      break;
     case "oldest":
       query = query.order("release_date", { ascending: true, nullsFirst: false });
       break;
@@ -491,15 +513,28 @@ export async function browseMovies(
   }
 
   const from = (page - 1) * perPage;
-  query = query.range(from, from + perPage - 1);
+  if (!relevanceSort) query = query.range(from, from + perPage - 1);
 
   const { data, count, error } = await query;
   if (error) {
     console.error("browseMovies", error.message);
   }
 
+  let movies = (data || []) as unknown as Movie[];
+  if (relevanceSort && filters.q) {
+    const term = filters.q.trim().toLowerCase();
+    movies = movies
+      .slice()
+      .sort(
+        (a, b) =>
+          relevanceScore(b, term) - relevanceScore(a, term) ||
+          String(b.release_date || "").localeCompare(String(a.release_date || "")),
+      )
+      .slice(from, from + perPage);
+  }
+
   return {
-    movies: (data || []) as unknown as Movie[],
+    movies,
     count: count || 0,
     page,
     perPage,

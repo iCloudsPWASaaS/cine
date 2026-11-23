@@ -17,7 +17,7 @@ export function LatestCarousel({
 }) {
   const router = useRouter();
   const swiperRef = useRef<SwiperInstance | null>(null);
-  const slides = movies.slice(0, 8);
+  const slides = movies.slice(0, 15);
   const initialIndex = Math.floor(slides.length / 2);
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [ready, setReady] = useState(false);

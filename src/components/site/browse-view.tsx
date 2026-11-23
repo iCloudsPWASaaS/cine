@@ -1,13 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronDown, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
+import { RotateCcw, Search, X } from "lucide-react";
 import { MovieCard } from "@/components/site/movie-card";
-import {
-  browseMovies,
-  getCategories,
-  getGenres,
-  getMovieCountries,
-} from "@/lib/queries";
+import { browseMovies, getCategories, getGenres } from "@/lib/queries";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -47,10 +42,10 @@ export async function BrowseView({
   const country = param(searchParams.country);
   const upcoming = param(searchParams.upcoming);
   const trending = forcedTrending ? "1" : param(searchParams.trending);
-  const sort = param(searchParams.sort) || "newest";
+  const sort = param(searchParams.sort) || (q ? "relevance" : "newest");
   const page = Math.max(1, Number(param(searchParams.page)) || 1);
 
-  const [result, genres, categories, countries] = await Promise.all([
+  const [result, genres, categories] = await Promise.all([
     browseMovies({
       q,
       type,
@@ -65,7 +60,6 @@ export async function BrowseView({
     }),
     getGenres(),
     getCategories(),
-    getMovieCountries(),
   ]);
 
   const activeGenre = genre ? genres.find((item) => item.slug === genre) : null;
@@ -236,9 +230,6 @@ export async function BrowseView({
   ];
 
   const totalPages = Math.max(1, Math.ceil(result.count / result.perPage));
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 60 }, (_, index) => currentYear - index);
-
   const pageNumbers: number[] = [];
   const start = Math.max(1, page - 2);
   const end = Math.min(totalPages, start + 4);
@@ -271,105 +262,6 @@ export async function BrowseView({
             </Link>
           ))}
         </div>
-      ) : null}
-
-      {!hideFilters ? (
-      <form
-        action={actionPath}
-        method="get"
-        className="mb-5 rounded-2xl border border-white/[0.06] bg-site-panel/80 p-4 backdrop-blur sm:p-5"
-      >
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))_auto]">
-          <div className="relative lg:col-span-2">
-            <Search
-              size={16}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/35"
-            />
-            <input
-              type="search"
-              name="q"
-              defaultValue={q}
-              placeholder="Search by title or story…"
-              className="input pl-11"
-            />
-          </div>
-
-          {!forcedGenre ? (
-            <select name="genre" defaultValue={genre} className="input">
-              <option value="">All genres</option>
-              {genres.map((item) => (
-                <option key={item.id} value={item.slug}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          ) : null}
-
-          {!forcedYear ? (
-            <select name="year" defaultValue={year} className="input">
-              <option value="">Any year</option>
-              {years.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          ) : null}
-
-          <select name="sort" defaultValue={sort} className="input">
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="rating">Highest rated</option>
-            <option value="title">Title A–Z</option>
-          </select>
-
-          <button type="submit" className="flix-btn whitespace-nowrap">
-            <SlidersHorizontal size={15} /> Apply
-          </button>
-        </div>
-
-        <details className="group mt-4 border-t border-white/[0.06] pt-4">
-          <summary className="flex cursor-pointer list-none items-center justify-between text-[11px] font-bold uppercase tracking-[0.14em] text-site-muted transition hover:text-white">
-            More filters
-            <ChevronDown
-              size={14}
-              className="transition group-open:rotate-180"
-            />
-          </summary>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {!forcedType ? (
-              <select name="type" defaultValue={type} className="input">
-                <option value="">All types</option>
-                <option value="movie">Movies</option>
-                <option value="series">TV Shows</option>
-              </select>
-            ) : null}
-
-            <select name="category" defaultValue={category} className="input">
-              <option value="">All categories</option>
-              {categories.map((item) => (
-                <option key={item.id} value={item.slug}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-
-            <select name="country" defaultValue={country} className="input">
-              <option value="">All countries</option>
-              {countries.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-
-            <select name="upcoming" defaultValue={upcoming} className="input">
-              <option value="">All releases</option>
-              <option value="1">Upcoming only</option>
-            </select>
-          </div>
-        </details>
-      </form>
       ) : null}
 
       {!hideFilters && !forcedGenre ? (

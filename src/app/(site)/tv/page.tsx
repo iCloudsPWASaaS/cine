@@ -21,7 +21,6 @@ export default async function TvPage({
       actionPath="/tv"
       heading="TV Shows"
       description="Series, seasons and episodes in one place."
-      hideFilters
     />
   );
 }

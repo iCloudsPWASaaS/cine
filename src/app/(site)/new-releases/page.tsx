@@ -21,7 +21,6 @@ export default async function NewReleasesPage({
       actionPath="/new-releases"
       heading="New Releases"
       description="Just added to the Cinewood library."
-      hideFilters
     />
   );
 }

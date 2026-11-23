@@ -18,9 +18,15 @@ export function SearchModal({ open, onClose, catalog }: SearchModalProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
+  const [remoteResults, setRemoteResults] = useState<CatalogItem[]>([]);
+  const [remoteQuery, setRemoteQuery] = useState("");
+  const [searching, setSearching] = useState(false);
 
   const close = useCallback(() => {
     setQuery("");
+    setRemoteResults([]);
+    setRemoteQuery("");
+    setSearching(false);
     onClose();
   }, [onClose]);
 
@@ -37,13 +43,49 @@ export function SearchModal({ open, onClose, catalog }: SearchModalProps) {
     };
   }, [open, close]);
 
+  const cleanQuery = query.trim();
+  const searchHref = cleanQuery
+    ? `/search?q=${encodeURIComponent(cleanQuery)}`
+    : null;
+
   const results = useMemo(() => {
-    const clean = query.trim().toLowerCase();
-    if (!clean) return catalog.slice(0, 6);
-    return catalog
-      .filter((item) => item.title.toLowerCase().includes(clean))
-      .slice(0, 8);
-  }, [catalog, query]);
+    if (!cleanQuery) return catalog.slice(0, 6);
+    return remoteQuery === cleanQuery ? remoteResults : [];
+  }, [catalog, cleanQuery, remoteQuery, remoteResults]);
+
+  const isSearching =
+    Boolean(cleanQuery) && searching && remoteQuery !== cleanQuery;
+
+  useEffect(() => {
+    if (!open || !cleanQuery) return;
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setSearching(true);
+      try {
+        const response = await fetch(
+          `/api/search?q=${encodeURIComponent(cleanQuery)}`,
+          { signal: controller.signal },
+        );
+        if (!response.ok) throw new Error("Search failed");
+        const data = (await response.json()) as { results?: CatalogItem[] };
+        setRemoteResults(Array.isArray(data.results) ? data.results : []);
+        setRemoteQuery(cleanQuery);
+      } catch {
+        if (!controller.signal.aborted) {
+          setRemoteResults([]);
+          setRemoteQuery(cleanQuery);
+        }
+      } finally {
+        if (!controller.signal.aborted) setSearching(false);
+      }
+    }, 200);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [cleanQuery, open]);
 
   if (!open) return null;
 
@@ -68,7 +110,11 @@ export function SearchModal({ open, onClose, catalog }: SearchModalProps) {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" && results[0]) {
+                if (event.key !== "Enter") return;
+                if (searchHref) {
+                  router.push(searchHref);
+                  close();
+                } else if (results[0]) {
                   router.push(`/watch/${results[0].slug}`);
                   close();
                 }
@@ -115,12 +161,27 @@ export function SearchModal({ open, onClose, catalog }: SearchModalProps) {
                   </span>
                 </Link>
               ))
+            ) : isSearching ? (
+              <p className="px-5 py-10 text-center text-sm text-site-dim">
+                Searching…
+              </p>
             ) : (
               <p className="px-5 py-10 text-center text-sm text-site-dim">
                 No titles found. Try another keyword.
               </p>
             )}
           </div>
+
+          {searchHref ? (
+            <Link
+              href={searchHref}
+              onClick={close}
+              className="flex items-center justify-between border-t border-white/[0.08] px-5 py-3 text-xs font-semibold text-brand transition hover:bg-white/[0.05]"
+            >
+              See all results for “{cleanQuery}”
+              <span aria-hidden="true">→</span>
+            </Link>
+          ) : null}
         </div>
       </div>
     </div>

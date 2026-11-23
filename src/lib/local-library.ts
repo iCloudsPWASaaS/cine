@@ -61,6 +61,7 @@ export interface ProgressItem extends CatalogItem {
   position: number;
   duration: number;
   updated_at: number;
+  resumable: boolean;
 }
 
 export function readProgress(): ProgressItem[] {
@@ -90,12 +91,47 @@ export function saveProgress(
         ...item,
         position,
         duration,
+        resumable: true,
         updated_at: Date.now(),
       },
       ...remaining,
     ].slice(0, 24),
     PROGRESS_EVENT,
   );
+}
+
+export function markWatched(item: CatalogItem) {
+  const items = readProgress();
+  const existing = items.find((entry) => entry.id === item.id);
+  const preserve =
+    existing && existing.resumable !== false && existing.duration > 0
+      ? existing
+      : null;
+  const entry: ProgressItem = preserve
+    ? { ...preserve, ...item, updated_at: Date.now() }
+    : {
+        ...item,
+        position: 0,
+        duration: 0,
+        resumable: false,
+        updated_at: Date.now(),
+      };
+
+  writeJson(
+    PROGRESS_KEY,
+    [entry, ...items.filter((row) => row.id !== item.id)].slice(0, 24),
+    PROGRESS_EVENT,
+  );
+}
+
+export function getResumePosition(id: string) {
+  const entry = readProgress().find(
+    (row) => row.id === id || row.slug === id,
+  );
+  if (!entry || entry.resumable === false) return 0;
+  if (entry.duration <= 0 || entry.position <= 5) return 0;
+  if (entry.position >= entry.duration * 0.95) return 0;
+  return entry.position;
 }
 
 export function removeProgress(id: string) {

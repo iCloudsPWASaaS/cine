@@ -124,13 +124,16 @@ export function ContinueWatchingRow() {
         }
       />
       <div className="no-scrollbar flex snap-x gap-4 overflow-x-auto pb-2">
-        {items.map((item) => (
-          <LocalCard
-            key={item.id}
-            item={item}
-            progress={(item.position / item.duration) * 100}
-          />
-        ))}
+        {items.map((item) => {
+          const canResume = item.resumable !== false && item.duration > 0;
+          return (
+            <LocalCard
+              key={item.id}
+              item={item}
+              progress={canResume ? (item.position / item.duration) * 100 : 8}
+            />
+          );
+        })}
       </div>
     </section>
   );

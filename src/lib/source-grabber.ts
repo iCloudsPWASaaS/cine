@@ -60,8 +60,8 @@ type TopGatewayProvider = {
 const TOP_GATEWAY_PROVIDERS: TopGatewayProvider[] = [
   {
     slug: "movies111",
-    name: "111Movies",
-    label: "111Movies • 1080p",
+    name: "111 Movies",
+    label: "111 Movies • 1080p",
     quality: "1080p",
     priority: 60,
     baseUrl: "https://111movies.net",
@@ -707,7 +707,7 @@ export async function grabSourcesFromInput(
 
 const DEFAULT_REGISTRY_PROVIDERS = [
   {
-    name: "111Movies",
+    name: "111 Movies",
     slug: "movies111",
     type: "embed" as const,
     base_url: "https://111movies.net",

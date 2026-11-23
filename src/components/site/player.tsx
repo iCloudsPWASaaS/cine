@@ -21,11 +21,16 @@ import {
   Tv,
 } from "lucide-react";
 import { groupSourcesByLanguage, normalizeLanguage } from "@/lib/languages";
-import { saveProgress } from "@/lib/local-library";
+import {
+  getResumePosition,
+  markWatched,
+  saveProgress,
+} from "@/lib/local-library";
 import type { MovieSource, MovieSubtitle, SourceType } from "@/lib/types";
 import {
   cn,
   externalUrl,
+  formatSourceLabel,
   isSandboxIncompatibleHost,
   isSandboxSafeHost,
   normalizeEmbedUrl,
@@ -120,6 +125,7 @@ function NativePlayer({
   subtitleLabel,
   onLoadingChange,
   onProgress,
+  getInitialPosition,
 }: {
   source: MovieSource;
   sourceType: SourceType;
@@ -129,6 +135,7 @@ function NativePlayer({
   subtitleLabel?: string | null;
   onLoadingChange: (loading: boolean) => void;
   onProgress: (position: number, duration: number) => void;
+  getInitialPosition?: () => number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const artRef = useRef<Artplayer | null>(null);
@@ -141,6 +148,12 @@ function NativePlayer({
     (art: Artplayer, url?: string | null, label?: string | null) => Promise<void>
   >(async () => undefined);
   const lastProgressRef = useRef(0);
+  const getInitialPositionRef = useRef(getInitialPosition);
+  const resumedRef = useRef(false);
+
+  useEffect(() => {
+    getInitialPositionRef.current = getInitialPosition;
+  }, [getInitialPosition]);
 
   const switchSubtitle = useCallback(
     (
@@ -249,6 +262,7 @@ function NativePlayer({
         import("hls.js"),
       ]);
       if (cancelled) return;
+      resumedRef.current = false;
 
       const Player = ArtplayerModule.default;
       const HlsPlayer = HlsModule.default;
@@ -308,6 +322,23 @@ function NativePlayer({
         },
       });
       artRef.current = art;
+      const tryResume = () => {
+        if (resumedRef.current) return;
+        const video = art?.video as HTMLVideoElement | undefined;
+        const target = getInitialPositionRef.current?.() || 0;
+        if (!video || target <= 5) return;
+        if (!Number.isFinite(video.duration) || video.duration <= target + 1) {
+          return;
+        }
+        try {
+          video.currentTime = Math.min(target, video.duration - 1);
+          resumedRef.current = true;
+        } catch {
+          return;
+        }
+      };
+      art.on("ready", tryResume);
+      art.on("canplay", tryResume);
       void applySubtitleRef.current(
         art,
         subtitleUrlRef.current,
@@ -408,7 +439,7 @@ function EmbedFrame({ source, subtitle, onLoaded }: EmbedFrameProps) {
     <iframe
       key={`${url}-${useStrictSandbox ? "sandboxed" : "compatible"}`}
       src={url}
-      title={source.label}
+      title={formatSourceLabel(source.label)}
       className="h-full w-full border-0"
       sandbox={
         useStrictSandbox
@@ -453,6 +484,22 @@ export function Player({
   );
   const tracked = useRef(false);
   const stageRef = useRef<HTMLDivElement>(null);
+  const watchedItem = useMemo(
+    () => ({
+      id: slug,
+      slug,
+      title,
+      poster_url: poster || null,
+      backdrop_url: poster,
+      type,
+      release_date: releaseDate || null,
+    }),
+    [slug, title, poster, type, releaseDate],
+  );
+  const getInitialPosition = useCallback(
+    () => getResumePosition(slug),
+    [slug],
+  );
   const [webFullscreen, setWebFullscreen] = useState(false);
   const [nativeFullscreen, setNativeFullscreen] = useState(false);
   const [activeSubtitleId, setActiveSubtitleId] = useState<string | null>(null);
@@ -469,22 +516,14 @@ export function Player({
   );
   const handleProgress = useCallback(
     (position: number, duration: number) => {
-      saveProgress(
-        {
-          id: slug,
-          slug,
-          title,
-          poster_url: poster || null,
-          backdrop_url: poster,
-          type,
-          release_date: releaseDate || null,
-        },
-        position,
-        duration,
-      );
+      saveProgress(watchedItem, position, duration);
     },
-    [slug, title, type, releaseDate, poster],
+    [watchedItem],
   );
+
+  useEffect(() => {
+    markWatched(watchedItem);
+  }, [watchedItem]);
 
   useEffect(() => {
     const onChange = () => {
@@ -613,7 +652,7 @@ export function Player({
                 Official provider
               </span>
               <p className="text-xl font-extrabold text-white">
-                {active.label}
+                {formatSourceLabel(active.label)}
               </p>
               <p className="mt-2 text-sm text-white/50">
                 Cinewood does not stream this title. Continue to the provider to
@@ -626,7 +665,8 @@ export function Player({
                 onClick={track}
                 className="flix-btn mt-6"
               >
-                <ExternalLink size={16} /> Open {externalUrl(active.url)}
+                <ExternalLink size={16} /> Open{" "}
+                {formatSourceLabel(externalUrl(active.url))}
               </a>
             </div>
           </div>
@@ -649,6 +689,7 @@ export function Player({
               subtitleLabel={activeSubtitle?.label}
               onLoadingChange={handleLoading}
               onProgress={handleProgress}
+              getInitialPosition={getInitialPosition}
             />
           </div>
         )}
@@ -774,6 +815,7 @@ export function Player({
                 onClick={() => {
                   setActiveId(source.id);
                   setLoading(source.type !== "external");
+                  markWatched(watchedItem);
                   if (source.type !== "external") track();
                 }}
                 className={cn(
@@ -797,7 +839,7 @@ export function Player({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-bold sm:max-w-[210px]">
-                    {source.label}
+                    {formatSourceLabel(source.label)}
                   </span>
                   <span className="mt-0.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-white/35">
                     {sourceKindLabel(source)}

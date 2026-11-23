@@ -233,7 +233,7 @@ const GATEWAY_PROVIDERS: {
 }[] = [
   {
     key: "movies111",
-    name: "111Movies",
+    name: "111 Movies",
     slug: "movies111",
     quality: "1080p",
     priority: 60,
@@ -578,6 +578,76 @@ export function externalUrl(url: string) {
   } catch {
     return url;
   }
+}
+
+const SOURCE_LABEL_CANONICAL: Record<string, string> = {
+  "111movies": "111 Movies",
+  "111movies.to": "111 Movies",
+  "movies111": "111 Movies",
+  "vidsrc.mov": "VidSrc.Mov",
+  "vidsrc.to": "VidSrc.To",
+  "vidsrc.me": "VidSrc",
+  vidsrcmov: "VidSrc.Mov",
+  vidsrc: "VidSrc",
+  "vidlink pro": "VidLink Pro",
+  "vidlink.pro": "VidLink Pro",
+  vidlink: "VidLink",
+  multiembed: "MultiEmbed",
+  vidcore: "VidCore",
+  vidzen: "VidZen",
+  vidfast: "VidFast",
+  vidhide: "VidHide",
+  doodstream: "DoodStream",
+  filemoon: "FileMoon",
+  nontongo: "NontonGo",
+  moviesapi: "MoviesAPI",
+  streamwish: "StreamWish",
+  videasy: "Videasy",
+  "embed.su": "Embed.su",
+  superembed: "SuperEmbed",
+  "open cinema": "Open Cinema",
+  "official trailer": "Official Trailer",
+  "adaptive hls": "Adaptive HLS",
+  "direct mp4": "Direct MP4",
+  "multi hd": "Multi HD",
+  "multi-server hd": "Multi-Server HD",
+  "2embed hd": "2Embed HD",
+};
+
+const SOURCE_LABEL_ACRONYMS = new Set([
+  "HLS",
+  "MP4",
+  "HD",
+  "4K",
+  "API",
+  "TV",
+  "HDR",
+  "WEB",
+]);
+
+function titleCaseSourceWord(word: string) {
+  const upper = word.toUpperCase();
+  if (SOURCE_LABEL_ACRONYMS.has(upper)) return upper;
+  if (/^\d/.test(word)) return word;
+  return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+}
+
+export function formatSourceLabel(label: string | null | undefined) {
+  return String(label || "")
+    .split("•")
+    .map((segment) => {
+      const text = segment.trim();
+      if (!text) return "";
+      const canonical = SOURCE_LABEL_CANONICAL[text.toLowerCase()];
+      if (canonical) return canonical;
+      return text
+        .split(/(\s+)/)
+        .map((token) =>
+          /^\s+$/.test(token) ? token : titleCaseSourceWord(token),
+        )
+        .join("");
+    })
+    .join(" • ");
 }
 
 export function withSubtitleParams(

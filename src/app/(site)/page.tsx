@@ -57,12 +57,8 @@ export default async function HomePage() {
     getAiringToday(12),
   ]);
 
-  const heroUsesUpcoming = upcoming.length > 0;
-  const heroMovies = heroUsesUpcoming
-    ? upcoming
-    : featured.length > 0
-      ? featured
-      : latest;
+  const heroMovies =
+    trending.length > 0 ? trending : featured.length > 0 ? featured : latest;
   const fallback = latest.length > 0 ? latest : featured;
 
   if (featured.length === 0 && latest.length === 0) {
@@ -86,10 +82,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <LatestCarousel
-        movies={heroMovies}
-        label={heroUsesUpcoming ? "Coming Soon" : "Featured"}
-      />
+      <LatestCarousel movies={heroMovies} label="Trending" />
 
       <div className="container-page pb-10">
         <MovieRow

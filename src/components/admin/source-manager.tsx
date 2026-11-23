@@ -103,7 +103,7 @@ export function SourceManager({
           <input
             id="grab-source-input"
             name="source_input"
-            placeholder="Paste StreamWish / FileMoon / DoodStream / VidHide link, .m3u8, page URL — or leave blank to auto-search by title…"
+            placeholder="Optional: paste an extra StreamWish / FileMoon / DoodStream / VidHide link, .m3u8 or page URL — bot discovery always runs…"
             className="input h-11 flex-1"
           />
           <select
@@ -127,16 +127,17 @@ export function SourceManager({
           </SubmitButton>
         </div>
         <p className="mt-2 text-[11px] text-white/35">
-          Audio language is detected automatically from movie metadata and the
-          source link; choose one above to override. Leave the link blank and
-          click <strong>Grab source</strong> to auto-discover and verify
-          playable streams across built-in TMDB/IMDb providers
-          (VidLink Pro, VidFast, FileMoon, VidHide, DoodStream, StreamWish,
-          NontonGo, MoviesAPI, VidSrc, Archive MP4/HLS &amp; YouTube), or paste
-          any share/embed link (<code className="text-white/55">/d/</code>,{" "}
+          This runs the same bot auto-discovery as import, then verifies and
+          attaches playable streams from TMDB/IMDb providers (VidLink Pro,
+          VidFast, FileMoon, VidHide, DoodStream, StreamWish, NontonGo,
+          MoviesAPI, VidSrc, Archive MP4/HLS &amp; YouTube). A pasted link is
+          added on top of those results. Audio language is detected from
+          metadata and the link; choose one above to override. Share links
+          (<code className="text-white/55">/d/</code>,{" "}
           <code className="text-white/55">/f/</code>,{" "}
           <code className="text-white/55">/v/</code> →{" "}
-          <code className="text-white/55">/e/</code>).
+          <code className="text-white/55">/e/</code>) are normalized
+          automatically.
         </p>
       </form>
 

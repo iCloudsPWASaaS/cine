@@ -22,12 +22,14 @@ import {
 } from "lucide-react";
 import { groupSourcesByLanguage, normalizeLanguage } from "@/lib/languages";
 import { saveProgress } from "@/lib/local-library";
-import type { MovieSource, MovieSubtitle } from "@/lib/types";
+import type { MovieSource, MovieSubtitle, SourceType } from "@/lib/types";
 import {
   cn,
   externalUrl,
+  isSandboxIncompatibleHost,
   isSandboxSafeHost,
   normalizeEmbedUrl,
+  upgradeLegacyGatewayUrl,
   withSubtitleParams,
   youtubeEmbed,
 } from "@/lib/utils";
@@ -111,6 +113,7 @@ function exitBrowserFullscreen() {
 
 function NativePlayer({
   source,
+  sourceType,
   poster,
   autoplay,
   subtitleUrl,
@@ -119,6 +122,7 @@ function NativePlayer({
   onProgress,
 }: {
   source: MovieSource;
+  sourceType: SourceType;
   poster?: string | null;
   autoplay: boolean;
   subtitleUrl?: string | null;
@@ -248,10 +252,16 @@ function NativePlayer({
 
       const Player = ArtplayerModule.default;
       const HlsPlayer = HlsModule.default;
+      const streamUrl = upgradeLegacyGatewayUrl(source.url);
+      const artType =
+        sourceType === "hls" || /\.m3u8(?:[?#]|$)/i.test(streamUrl)
+          ? "m3u8"
+          : undefined;
 
       art = new Player({
         container,
-        url: source.url,
+        url: streamUrl,
+        type: artType,
         poster: poster || undefined,
         autoplay,
         volume: 0.75,
@@ -346,7 +356,7 @@ function NativePlayer({
         // ignore
       }
     };
-  }, [source.url, poster, autoplay, onLoadingChange, onProgress]);
+  }, [source.url, sourceType, poster, autoplay, onLoadingChange, onProgress]);
 
   useEffect(() => {
     subtitleUrlRef.current = subtitleUrl;
@@ -374,7 +384,8 @@ function EmbedFrame({ source, subtitle, onLoaded }: EmbedFrameProps) {
   );
 
   const useStrictSandbox =
-    source.type === "youtube" || isSandboxSafeHost(url);
+    (source.type === "youtube" || isSandboxSafeHost(url)) &&
+    !isSandboxIncompatibleHost(url);
 
   useEffect(() => {
     const handleBlur = () => {
@@ -399,7 +410,11 @@ function EmbedFrame({ source, subtitle, onLoaded }: EmbedFrameProps) {
       src={url}
       title={source.label}
       className="h-full w-full border-0"
-      sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+      sandbox={
+        useStrictSandbox
+          ? "allow-scripts allow-same-origin allow-forms allow-presentation"
+          : undefined
+      }
       allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer"
       allowFullScreen
       referrerPolicy="origin"
@@ -627,6 +642,7 @@ export function Player({
           <div onClick={track} className="h-full w-full">
             <NativePlayer
               source={active}
+              sourceType={active.type}
               poster={poster}
               autoplay={autoplay}
               subtitleUrl={activeSubtitle?.url}

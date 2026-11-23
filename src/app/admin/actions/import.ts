@@ -65,23 +65,26 @@ export async function importMovieByNameAction(formData: FormData) {
   if (!saved) fail("Could not import this title.");
 
   let grabbedCount = 0;
+  let grabError: string | null = null;
   try {
     const grabbed = await grabAndSaveMovieSources(saved.id, "", {
       autoDiscover: true,
       language,
     });
     grabbedCount = grabbed.count;
-  } catch {
-    // Movie was still imported; admin can retry source grab on edit page
+  } catch (error) {
+    grabError =
+      error instanceof Error ? error.message : "Unknown source grab error.";
   }
 
   revalidatePath("/", "layout");
   revalidatePath(`/watch/${saved.slug}`);
 
-  const message =
-    grabbedCount > 0
+  const message = grabError
+    ? `${saved.title} imported, but the source grab failed: ${grabError}. Retry from the edit page.`
+    : grabbedCount > 0
       ? `${saved.title} imported with ${grabbedCount} playback source${grabbedCount === 1 ? "" : "s"}.`
-      : `${saved.title} imported from TMDB.`;
+      : `${saved.title} imported from TMDB. No verified playback sources were found.`;
 
   redirect(`/admin/movies/${saved.id}?ok=${encodeURIComponent(message)}`);
 }

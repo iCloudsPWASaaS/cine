@@ -194,6 +194,24 @@ function addLanguageVariants(
   return [...items, ...variants];
 }
 
+function canBeFramed(response: Response): boolean {
+  const xFrameOptions = (response.headers.get("x-frame-options") || "")
+    .trim()
+    .toUpperCase();
+  if (xFrameOptions.includes("DENY") || xFrameOptions.includes("SAMEORIGIN")) {
+    return false;
+  }
+
+  const csp = response.headers.get("content-security-policy") || "";
+  const frameAncestors = csp
+    .match(/frame-ancestors\s+([^;]+)/i)?.[1]
+    ?.trim()
+    .toLowerCase();
+  if (frameAncestors && frameAncestors !== "*") return false;
+
+  return true;
+}
+
 export async function verifySourcePlayable(
   item: GrabbedSourceItem,
   movieTitle?: string,
@@ -270,6 +288,7 @@ export async function verifySourcePlayable(
     if (res.status === 404 || res.status === 410 || res.status === 451 || res.status >= 500) {
       return false;
     }
+    if (!canBeFramed(res)) return false;
 
     const html = await res.text();
     if (!html || html.length < 120) return false;
@@ -278,42 +297,36 @@ export async function verifySourcePlayable(
       return false;
     }
 
+    if (movieTitle) {
+      const lowerHtml = html.toLowerCase();
+      if (
+        normalizeTitleTokens(movieTitle).some((token) =>
+          lowerHtml.includes(token),
+        )
+      ) {
+        return res.ok;
+      }
+    }
+
     // Host-specific existence checks
     if (host.includes("multiembed.mov") || host.includes("streamingnow.mov")) {
-      return (
-        res.ok &&
-        html.length > 15000 &&
-        !html.includes("This video doesn't exist") &&
-        !html.includes("Not Found!")
-      );
+      return res.ok && !html.includes("This video doesn't exist");
     }
 
     if (host.includes("2embed.")) {
       const pageTitle = (html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || "").trim();
-      if (!pageTitle || /^2embed\.cc\s*-\s*player$/i.test(pageTitle)) {
-        return false;
-      }
-      return res.ok;
+      return Boolean(pageTitle) && !/^2embed\.cc\s*-\s*player$/i.test(pageTitle);
     }
 
     if (host.includes("vidlink.")) {
-      return res.ok && !html.includes("__next_error__") && html.length > 15000;
+      return res.ok && !html.includes("__next_error__");
     }
 
     if (host.includes("vidfast.")) {
-      if (!res.ok) return false;
-      if (movieTitle) {
-        const tokens = normalizeTitleTokens(movieTitle);
-        const lowerHtml = html.toLowerCase();
-        if (tokens.length > 0 && !tokens.some((token) => lowerHtml.includes(token))) {
-          return false;
-        }
-      }
-      return html.length > 20000;
+      return res.ok;
     }
 
     if (host.includes("nontongo.")) {
-      if (!res.ok) return false;
       const pageTitle = (html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || "").trim();
       return Boolean(pageTitle) && !/bad gateway|error|404/i.test(pageTitle);
     }
@@ -1149,9 +1162,10 @@ export async function grabAndSaveMovieSources(
 
   const { data: movieRow } = await supabase
     .from("movies")
-    .select("metadata")
+    .select("metadata,title")
     .eq("id", movieId)
     .maybeSingle();
+  const movieTitle = String(movieRow?.title || "");
   const metaLanguage = languageFromMetadata(movieRow?.metadata);
   const effectiveLanguage = canonicalLanguage(options?.language) || metaLanguage;
 
@@ -1159,7 +1173,7 @@ export async function grabAndSaveMovieSources(
     const fromInput = await grabSourcesFromInput(rawInput);
     const verifiedInput = await Promise.all(
       fromInput.map(async (item) =>
-        (await verifySourcePlayable(item)) ? item : null,
+        (await verifySourcePlayable(item, movieTitle)) ? item : null,
       ),
     );
     const inputItems = verifiedInput.filter(

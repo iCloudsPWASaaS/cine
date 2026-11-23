@@ -13,6 +13,7 @@ import type { MovieMetadata, MovieSubtitle } from "@/lib/types";
 import {
   detectSourceProvider,
   slugify,
+  upgradeLegacyGatewayUrl,
   youtubeEmbed,
 } from "@/lib/utils";
 
@@ -240,7 +241,7 @@ export async function addMovieSourceAction(formData: FormData) {
   if (!rawUrl) fail(back, "Source URL is required.");
 
   const detected = detectSourceProvider(rawUrl);
-  const url = detected ? detected.url : rawUrl;
+  const url = upgradeLegacyGatewayUrl(detected ? detected.url : rawUrl);
   const rawLanguage = text(formData, "language");
   const language = canonicalLanguage(rawLanguage) || rawLanguage || null;
   const rawLabel = text(formData, "label");
@@ -298,13 +299,13 @@ export async function grabMovieSourcesAction(formData: FormData) {
 
   const sourceInput = text(formData, "source_input");
   const rawLanguage = text(formData, "language");
-  const language = canonicalLanguage(rawLanguage) || rawLanguage || null;
+  const language = canonicalLanguage(rawLanguage) || null;
 
   let result: { count: number; newCount: number; labels: string[] };
   try {
     result = await grabAndSaveMovieSources(movieId, sourceInput, {
       language,
-      autoDiscover: !sourceInput,
+      autoDiscover: true,
     });
   } catch (error) {
     fail(

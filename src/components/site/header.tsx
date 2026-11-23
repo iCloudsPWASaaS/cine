@@ -29,6 +29,7 @@ import {
   WATCHLIST_EVENT,
   type CatalogItem,
 } from "@/lib/local-library";
+import { isSpecialCategory } from "@/lib/special-categories";
 import type { Category } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -95,6 +96,8 @@ function CategoriesDropdown({
         name,
         slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
       }));
+  const specialLinks = items.filter((item) => isSpecialCategory(item.slug));
+  const regularLinks = items.filter((item) => !isSpecialCategory(item.slug));
 
   useEffect(() => {
     if (!open) return;
@@ -131,7 +134,7 @@ function CategoriesDropdown({
             MOVIES
           </h3>
           <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1">
-            {items.map((item) => (
+            {regularLinks.map((item) => (
               <Link
                 key={item.slug}
                 href={`/movies?category=${item.slug}`}
@@ -143,6 +146,25 @@ function CategoriesDropdown({
               </Link>
             ))}
           </div>
+          {specialLinks.length > 0 ? (
+            <div className="mt-4 border-t border-white/10 pt-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gold">
+                Special categories
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {specialLinks.map((item) => (
+                  <Link
+                    key={item.slug}
+                    href={`/movies?category=${item.slug}`}
+                    onClick={() => setOpen(false)}
+                    className="rounded-md border border-gold/25 bg-gold/[0.07] px-2 py-2 text-xs font-semibold text-gold transition hover:border-gold/60 hover:bg-gold/15"
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="mt-4 border-t border-white/10 pt-3">
             <Link
               href="/movies"
@@ -248,6 +270,12 @@ export function Header({
         name,
         slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
       }));
+  const specialLinks = categoryLinks.filter((item) =>
+    isSpecialCategory(item.slug),
+  );
+  const regularLinks = categoryLinks.filter(
+    (item) => !isSpecialCategory(item.slug),
+  );
 
   return (
     <>
@@ -363,7 +391,7 @@ export function Header({
               Categories
             </p>
             <div className="flex flex-wrap gap-2 px-3 pb-3">
-              {categoryLinks.map((item) => (
+              {regularLinks.map((item) => (
                 <Link
                   key={item.slug}
                   href={`/movies?category=${item.slug}`}
@@ -374,6 +402,25 @@ export function Header({
                 </Link>
               ))}
             </div>
+            {specialLinks.length > 0 ? (
+              <>
+                <p className="px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-[0.1em] text-gold">
+                  Special categories
+                </p>
+                <div className="flex flex-wrap gap-2 px-3 pb-3">
+                  {specialLinks.map((item) => (
+                    <Link
+                      key={item.slug}
+                      href={`/movies?category=${item.slug}`}
+                      onClick={() => setMobileOpen(false)}
+                      className="rounded-md border border-gold/25 bg-gold/10 px-2.5 py-1 text-xs text-gold"
+                    >
+                      {item.name}
+                    </Link>
+                  ))}
+                </div>
+              </>
+            ) : null}
             <p className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.1em] text-site-dim">
               Browse
             </p>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img" aria-label="South Indian Movies">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b1b4b"/>
+      <stop offset="0.55" stop-color="#4338ca"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="400" fill="url(#g)"/>
+  <circle cx="520" cy="90" r="150" fill="#ffffff" opacity="0.06"/>
+  <circle cx="90" cy="350" r="180" fill="#c4b5fd" opacity="0.1"/>
+  <text x="42" y="285" fill="#ffffff" font-family="Arial, sans-serif" font-size="52" font-weight="800">SOUTH INDIAN</text>
+  <text x="42" y="340" fill="#ddd6fe" font-family="Arial, sans-serif" font-size="30" font-weight="700" letter-spacing="6">MOVIES</text>
+</svg>

@@ -1,4 +1,8 @@
-import type { TmdbSearchResult } from "@/lib/types";
+import type {
+  TmdbCollectionDetails,
+  TmdbCollectionRef,
+  TmdbSearchResult,
+} from "@/lib/types";
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
@@ -67,6 +71,7 @@ export interface TmdbDetails {
   production_companies?: { name: string }[];
   production_countries?: { name: string }[];
   spoken_languages?: { english_name?: string; name?: string }[];
+  belongs_to_collection?: TmdbCollectionRef | null;
   number_of_seasons?: number;
   number_of_episodes?: number;
 }
@@ -162,6 +167,29 @@ export async function getTmdbDetails(
       language: "en-US",
     },
     300,
+  );
+}
+
+export async function getTmdbMovieCollection(
+  tmdbId: number,
+): Promise<TmdbCollectionRef | null> {
+  const data = await tmdbFetch<{
+    belongs_to_collection?: TmdbCollectionRef | null;
+  }>(
+    `/movie/${tmdbId}`,
+    { language: "en-US" },
+    86400,
+  );
+  return data.belongs_to_collection || null;
+}
+
+export async function getTmdbCollectionDetails(
+  collectionId: number,
+): Promise<TmdbCollectionDetails> {
+  return tmdbFetch<TmdbCollectionDetails>(
+    `/collection/${collectionId}`,
+    { language: "en-US" },
+    86400,
   );
 }
 

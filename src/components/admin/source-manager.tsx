@@ -34,7 +34,12 @@ const typeIcon = {
 } as const;
 
 const SUPPORTED_HOSTS = [
+  "111Movies",
   "VidLink Pro",
+  "VidSrc.Mov",
+  "MultiEmbed",
+  "VidCore",
+  "VidZen",
   "VidFast",
   "StreamWish",
   "FileMoon",
@@ -127,12 +132,13 @@ export function SourceManager({
           </SubmitButton>
         </div>
         <p className="mt-2 text-[11px] text-white/35">
-          This runs the same bot auto-discovery as import, then verifies and
-          attaches playable streams from TMDB/IMDb providers (VidLink Pro,
-          VidFast, FileMoon, VidHide, DoodStream, StreamWish, NontonGo,
-          MoviesAPI, VidSrc, Archive MP4/HLS &amp; YouTube). A pasted link is
-          added on top of those results. Audio language is detected from
-          metadata and the link; choose one above to override. Share links
+          This runs the same grab logic as import, then verifies and attaches
+          playable streams. Top priority: 111Movies, VidLink, VidSrc.Mov,
+          MultiEmbed, VidCore and VidZen. Others include VidFast, FileMoon,
+          VidHide, DoodStream, NontonGo, MoviesAPI, VidSrc, Archive MP4/HLS
+          &amp; YouTube. A pasted link is added on top of those results. Audio
+          language is detected from metadata and the link; choose one above to
+          override. Share links
           (<code className="text-white/55">/d/</code>,{" "}
           <code className="text-white/55">/f/</code>,{" "}
           <code className="text-white/55">/v/</code> →{" "}

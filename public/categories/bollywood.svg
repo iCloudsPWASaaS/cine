@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img" aria-label="Bollywood Movies">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b2a12"/>
+      <stop offset="0.55" stop-color="#854d0e"/>
+      <stop offset="1" stop-color="#b45309"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="400" fill="url(#g)"/>
+  <circle cx="520" cy="90" r="150" fill="#ffffff" opacity="0.06"/>
+  <circle cx="90" cy="350" r="180" fill="#fbbf24" opacity="0.12"/>
+  <text x="42" y="300" fill="#ffffff" font-family="Arial, sans-serif" font-size="56" font-weight="800">BOLLYWOOD</text>
+  <text x="42" y="356" fill="#fde68a" font-family="Arial, sans-serif" font-size="30" font-weight="700" letter-spacing="6">MOVIES</text>
+</svg>

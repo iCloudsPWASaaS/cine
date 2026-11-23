@@ -18,8 +18,10 @@ import {
 } from "@/components/site/local-library";
 import { LatestCarousel } from "@/components/site/latest-carousel";
 import { MovieRow } from "@/components/site/movie-row";
+import { SpecialCategorySection } from "@/components/site/special-category-section";
 import {
   getAiringToday,
+  getCategories,
   getCategoriesWithMovies,
   getFeatured,
   getLatest,
@@ -29,6 +31,7 @@ import {
   getTrending,
   getUpcoming,
 } from "@/lib/queries";
+import { isSpecialCategory } from "@/lib/special-categories";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +47,7 @@ export default async function HomePage() {
     popularSeries,
     nowPlaying,
     airingToday,
+    categories,
   ] = await Promise.all([
     getFeatured(6),
     getTrending(12),
@@ -55,11 +59,15 @@ export default async function HomePage() {
     getPopularByType("series", 12),
     getNowPlaying(12),
     getAiringToday(12),
+    getCategories(),
   ]);
 
   const heroMovies =
     trending.length > 0 ? trending : featured.length > 0 ? featured : latest;
   const fallback = latest.length > 0 ? latest : featured;
+  const specialCategories = categories.filter((category) =>
+    isSpecialCategory(category.slug),
+  );
 
   if (featured.length === 0 && latest.length === 0) {
     return (
@@ -105,6 +113,8 @@ export default async function HomePage() {
 
         <ContinueWatchingRow />
         <WatchlistRow />
+
+        <SpecialCategorySection categories={specialCategories} />
 
         <MovieRow
           title="Hot Today"

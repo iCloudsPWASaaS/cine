@@ -1,15 +1,20 @@
 -- Cinewood seed data: categories, genres, settings and four legal demo films
 -- (Blender Foundation open movies, CC BY 3.0) so the player is usable out of the box.
 
-insert into cinewood.categories (name, slug, description, sort_order, is_active) values
-  ('Latest Movies', 'latest-movies', 'Freshly added titles on Cinewood.', 10, true),
-  ('Trending', 'trending', 'What everyone is watching right now.', 20, true),
-  ('Animation', 'animation', 'Hand-drawn, CG and everything in between.', 30, true),
-  ('Sci-Fi', 'sci-fi', 'Far futures, strange worlds and big ideas.', 40, true),
-  ('Family', 'family', 'Films for the whole household.', 50, true),
-  ('Action', 'action', 'High stakes, fast cuts, big set pieces.', 60, true),
-  ('Drama', 'drama', 'Stories that stay with you.', 70, true),
-  ('Series', 'series', 'Episodic storytelling, season by season.', 80, true)
+insert into cinewood.categories (name, slug, description, sort_order, is_active, image_url) values
+  ('Latest Movies', 'latest-movies', 'Freshly added titles on Cinewood.', 10, true, null),
+  ('Trending', 'trending', 'What everyone is watching right now.', 20, true, null),
+  ('Animation', 'animation', 'Hand-drawn, CG and everything in between.', 30, true, null),
+  ('Sci-Fi', 'sci-fi', 'Far futures, strange worlds and big ideas.', 40, true, null),
+  ('Family', 'family', 'Films for the whole household.', 50, true, null),
+  ('Action', 'action', 'High stakes, fast cuts, big set pieces.', 60, true, null),
+  ('Drama', 'drama', 'Stories that stay with you.', 70, true, null),
+  ('Series', 'series', 'Episodic storytelling, season by season.', 80, true, null),
+  ('Indonesian Movies', 'indonesian-movies', 'Indonesian cinema — chilling horror, action and heartfelt drama.', 90, true, '/categories/indonesian.svg'),
+  ('Chinese Movies', 'chinese-movies', 'Mainland, Hong Kong and Taiwanese favourites in one place.', 100, true, '/categories/chinese.svg'),
+  ('Bangla Movies', 'bangla-movies', 'Bengali stories from Dhaka to Kolkata, films and web series.', 110, true, '/categories/bangla.svg'),
+  ('Bollywood Movies', 'bollywood-movies', 'Hindi cinema’s biggest stars, songs and spectacles.', 120, true, '/categories/bollywood.svg'),
+  ('South Indian Movies', 'south-indian-movies', 'Telugu, Tamil, Malayalam and Kannada blockbusters.', 130, true, '/categories/south-indian.svg')
 on conflict (slug) do nothing;
 
 insert into cinewood.genres (tmdb_id, name, slug) values
@@ -43,6 +48,14 @@ insert into cinewood.genres (tmdb_id, name, slug) values
 on conflict (slug) do nothing;
 
 insert into cinewood.sources (name, slug, type, base_url, region, is_active, notes) values
+  ('111Movies', 'movies111', 'embed', 'https://111movies.net', null, true,
+   'Top-priority 1080p multi-server embed gateway.'),
+  ('VidSrc.Mov', 'vidsrcmov', 'embed', 'https://vidsrc.mov', null, true,
+   'Top-priority 1080p multi-server embed gateway.'),
+  ('VidCore', 'vidcore', 'embed', 'https://vidcore.io', null, true,
+   'Top-priority adaptive 4K embed gateway.'),
+  ('VidZen', 'vidzen', 'embed', 'https://vidzen.fun', null, true,
+   'Top-priority adaptive 4K embed gateway.'),
   ('StreamWish', 'streamwish', 'embed', 'https://streamwish.to/', null, true,
    'StreamWish embed provider (/e/ links).'),
   ('FileMoon', 'filemoon', 'embed', 'https://filemoon.sx/', null, true,

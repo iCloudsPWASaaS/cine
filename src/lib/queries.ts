@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { SPECIAL_CATEGORIES } from "@/lib/special-categories";
 import type {
   BrowseFilters,
   Category,
@@ -77,6 +78,11 @@ export async function getSiteSettings(): Promise<SiteSettings> {
 
 export async function getCategories(activeOnly = true): Promise<Category[]> {
   const supabase = createAdminClient();
+  await supabase.from("categories").upsert(
+    SPECIAL_CATEGORIES.map((category) => ({ ...category, is_active: true })),
+    { onConflict: "slug", ignoreDuplicates: true },
+  );
+
   let query = supabase
     .from("categories")
     .select("id, name, slug, description, image_url, sort_order, is_active")

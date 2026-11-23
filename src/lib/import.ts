@@ -205,6 +205,8 @@ export async function importMovieFromTmdb(input: ImportInput) {
   const metadata = {
     tmdb_id: tmdbId,
     media_type: mediaType,
+    collection: details.belongs_to_collection || null,
+    collection_checked: true,
     original_language: details.original_language || null,
     homepage: details.homepage || null,
     tmdb_url: `https://www.themoviedb.org/${mediaType}/${tmdbId}`,

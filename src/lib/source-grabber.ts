@@ -46,6 +46,147 @@ const IGNORED_EXTENSIONS =
 const DEAD_VIDEO_HTML_PATTERN =
   /(?:this\s+video\s+doesn't\s+exist|video\s+not\s+found|media\s+not\s+found|movie\s+not\s+found|episode\s+not\s+found|file\s+not\s+found|file\s+is\s+no\s+longer\s+available|file\s+was\s+deleted|this\s+video\s+is\s+unavailable|no\s+sources?\s+found|id="__next_error__"|404\s+not\s+found|sorry,\s+this\s+video\s+has\s+been\s+removed)/i;
 
+type TopGatewayProvider = {
+  slug: string;
+  name: string;
+  label: string;
+  quality: string;
+  priority: number;
+  baseUrl: string;
+  movieUrl: (id: number) => string;
+  tvUrl: (id: number, season: number, episode: number) => string;
+};
+
+const TOP_GATEWAY_PROVIDERS: TopGatewayProvider[] = [
+  {
+    slug: "movies111",
+    name: "111Movies",
+    label: "111Movies • 1080p",
+    quality: "1080p",
+    priority: 60,
+    baseUrl: "https://111movies.net",
+    movieUrl: (id) => `https://111movies.net/movie/${id}`,
+    tvUrl: (id, season, episode) =>
+      `https://111movies.net/tv/${id}/${season}/${episode}`,
+  },
+  {
+    slug: "vidlink",
+    name: "VidLink Pro",
+    label: "VidLink Pro • 1080p HLS",
+    quality: "1080p",
+    priority: 59,
+    baseUrl: "https://vidlink.pro",
+    movieUrl: (id) => `https://vidlink.pro/movie/${id}`,
+    tvUrl: (id, season, episode) =>
+      `https://vidlink.pro/tv/${id}/${season}/${episode}`,
+  },
+  {
+    slug: "vidsrcmov",
+    name: "VidSrc.Mov",
+    label: "VidSrc.Mov • 1080p",
+    quality: "1080p",
+    priority: 58,
+    baseUrl: "https://vidsrc.mov",
+    movieUrl: (id) => `https://vidsrc.mov/embed/movie/${id}`,
+    tvUrl: (id, season, episode) =>
+      `https://vidsrc.mov/embed/tv/${id}/${season}/${episode}`,
+  },
+  {
+    slug: "streamwish",
+    name: "MultiEmbed",
+    label: "MultiEmbed • Multi HD",
+    quality: "HD",
+    priority: 57,
+    baseUrl: "https://multiembed.mov",
+    movieUrl: (id) => `https://multiembed.mov/?video_id=${id}&tmdb=1`,
+    tvUrl: (id, season, episode) =>
+      `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`,
+  },
+  {
+    slug: "vidcore",
+    name: "VidCore",
+    label: "VidCore • 4K Adaptive",
+    quality: "4K",
+    priority: 56,
+    baseUrl: "https://vidcore.io",
+    movieUrl: (id) => `https://vidcore.io/movie/${id}`,
+    tvUrl: (id, season, episode) =>
+      `https://vidcore.io/tv/${id}/${season}/${episode}`,
+  },
+  {
+    slug: "vidzen",
+    name: "VidZen",
+    label: "VidZen • 4K Adaptive",
+    quality: "4K",
+    priority: 55,
+    baseUrl: "https://vidzen.fun",
+    movieUrl: (id) => `https://vidzen.fun/movie/${id}`,
+    tvUrl: (id, season, episode) =>
+      `https://vidzen.fun/tv/${id}/${season}/${episode}`,
+  },
+];
+
+type GrabMovieRow = {
+  title?: string | null;
+  type?: string | null;
+  tmdb_id?: string | number | null;
+  metadata?: unknown;
+};
+
+function movieMediaKind(movie: GrabMovieRow | null | undefined): "movie" | "tv" {
+  return movie?.type === "series" ? "tv" : "movie";
+}
+
+async function resolveMovieTmdbId(
+  movie: GrabMovieRow | null | undefined,
+  mediaKind: "movie" | "tv",
+): Promise<number | null> {
+  const direct = movie?.tmdb_id ? Math.abs(Number(movie.tmdb_id)) : null;
+  if (direct && Number.isFinite(direct)) return direct;
+  if (!movie?.title || !tmdbConfigured()) return null;
+
+  try {
+    const matches = await searchTmdb(movie.title);
+    const match =
+      matches.find((m) => (m.media_type === "tv" ? "tv" : "movie") === mediaKind) ||
+      matches[0];
+    const id = match?.id ? Math.abs(Number(match.id)) : null;
+    return id && Number.isFinite(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+async function buildTopGatewaySources(
+  tmdbId: number | null,
+  mediaKind: "movie" | "tv",
+  movieTitle: string,
+): Promise<GrabbedSourceItem[]> {
+  if (!tmdbId) return [];
+
+  const candidates: GrabbedSourceItem[] = TOP_GATEWAY_PROVIDERS.map((provider) => ({
+    label: provider.label,
+    url:
+      mediaKind === "tv"
+        ? provider.tvUrl(tmdbId, 1, 1)
+        : provider.movieUrl(tmdbId),
+    type: "embed",
+    quality: provider.quality,
+    language: null,
+    priority: provider.priority,
+    providerSlug: provider.slug,
+    providerName: provider.name,
+    baseUrl: provider.baseUrl,
+  }));
+
+  const verified = await Promise.all(
+    candidates.map(async (item) =>
+      (await verifySourcePlayable(item, movieTitle)) ? item : null,
+    ),
+  );
+  return verified.filter((item): item is GrabbedSourceItem => Boolean(item));
+}
+
 function resolveUrl(candidate: string, baseUrl?: string): string | null {
   const cleaned = candidate
     .replace(/\\+/g, "")
@@ -120,7 +261,7 @@ function extractCandidateUrlsFromHtml(html: string, pageUrl: string): string[] {
 
   // 5. Known host links anywhere in scripts/HTML
   const hostLinkRegex =
-    /https?:\/\/(?:[a-z0-9-]+\.)*(?:streamwish|swdyu|wishembed|sfastwish|flaswish|obeywish|cdnwish|asnwish|jodwish|swish|hlswish|playerwish|embedwish|filemoon|moonmov|kerapoxy|1azayf9w|bymo|fmoonembed|vidhide|vidhidepro|vidhidevip|vidhidepre|vidhidefast|earnvids|smoothpre|dhtpre|peytonepre|callistanise|dood|doodstream|d000d|d0000d|ds2play|ds2video|doods|do7go|myvidplay|vide0|streamtape|strtape|strcloud|mixdrop|voe|vidguard|vgfplay|listeamed|lulustream|luluvdo|mp4upload|vidlink|vidfast|2embed|nontongo|moviesapi|autoembed|multiembed|vidsrc)\.[a-z0-9.]+\/[^\s"'<>\\`]+/gi;
+    /https?:\/\/(?:[a-z0-9-]+\.)*(?:streamwish|swdyu|wishembed|sfastwish|flaswish|obeywish|cdnwish|asnwish|jodwish|swish|hlswish|playerwish|embedwish|filemoon|moonmov|kerapoxy|1azayf9w|bymo|fmoonembed|vidhide|vidhidepro|vidhidevip|vidhidepre|vidhidefast|earnvids|smoothpre|dhtpre|peytonepre|callistanise|dood|doodstream|d000d|d0000d|ds2play|ds2video|doods|do7go|myvidplay|vide0|streamtape|strtape|strcloud|mixdrop|voe|vidguard|vgfplay|listeamed|lulustream|luluvdo|mp4upload|vidlink|vidfast|2embed|nontongo|moviesapi|autoembed|multiembed|vidsrc|111movies|vidcore|vidzen)\.[a-z0-9.]+\/[^\s"'<>\\`]+/gi;
   for (const match of unescaped.matchAll(hostLinkRegex)) {
     const url = resolveUrl(match[0], pageUrl);
     if (url) found.push(url);
@@ -566,6 +707,38 @@ export async function grabSourcesFromInput(
 
 const DEFAULT_REGISTRY_PROVIDERS = [
   {
+    name: "111Movies",
+    slug: "movies111",
+    type: "embed" as const,
+    base_url: "https://111movies.net",
+    is_active: true,
+    notes: "Top-priority 1080p multi-server embed gateway.",
+  },
+  {
+    name: "VidSrc.Mov",
+    slug: "vidsrcmov",
+    type: "embed" as const,
+    base_url: "https://vidsrc.mov",
+    is_active: true,
+    notes: "Top-priority 1080p multi-server embed gateway.",
+  },
+  {
+    name: "VidCore",
+    slug: "vidcore",
+    type: "embed" as const,
+    base_url: "https://vidcore.io",
+    is_active: true,
+    notes: "Top-priority adaptive 4K embed gateway.",
+  },
+  {
+    name: "VidZen",
+    slug: "vidzen",
+    type: "embed" as const,
+    base_url: "https://vidzen.fun",
+    is_active: true,
+    notes: "Top-priority adaptive 4K embed gateway.",
+  },
+  {
     name: "VidLink Pro",
     slug: "vidlink",
     type: "embed" as const,
@@ -780,26 +953,10 @@ export async function autoDiscoverSourcesForMovie(
     .select("id, name, slug, type, base_url, is_active, notes")
     .eq("is_active", true);
 
-  let tmdbAbs = movie.tmdb_id ? Math.abs(Number(movie.tmdb_id)) : null;
-  const mediaKind = movie.type === "series" ? "tv" : "movie";
+  const mediaKind = movieMediaKind(movie);
+  const tmdbAbs = await resolveMovieTmdbId(movie, mediaKind);
   const detectedLanguage =
     canonicalLanguage(preferredLanguage) || languageFromMetadata(movie.metadata);
-
-  // If movie has no tmdb_id yet, look it up by title on TMDB automatically
-  if (!tmdbAbs && tmdbConfigured()) {
-    try {
-      const matches = await searchTmdb(movie.title);
-      const match =
-        matches.find(
-          (m) => (m.media_type === "tv" ? "tv" : "movie") === mediaKind,
-        ) || matches[0];
-      if (match?.id) {
-        tmdbAbs = match.id;
-      }
-    } catch {
-      // ignore search error
-    }
-  }
 
   const primaryGateways: GrabbedSourceItem[] = [];
   const secondarySpaGateways: GrabbedSourceItem[] = [];
@@ -1162,12 +1319,21 @@ export async function grabAndSaveMovieSources(
 
   const { data: movieRow } = await supabase
     .from("movies")
-    .select("metadata,title")
+    .select("metadata,title,type,tmdb_id")
     .eq("id", movieId)
     .maybeSingle();
   const movieTitle = String(movieRow?.title || "");
   const metaLanguage = languageFromMetadata(movieRow?.metadata);
   const effectiveLanguage = canonicalLanguage(options?.language) || metaLanguage;
+  const mediaKind = movieMediaKind(movieRow);
+  const tmdbId = await resolveMovieTmdbId(movieRow, mediaKind);
+
+  collected.push(
+    ...addLanguageVariants(
+      await buildTopGatewaySources(tmdbId, mediaKind, movieTitle),
+      effectiveLanguage,
+    ),
+  );
 
   if (rawInput.trim()) {
     const fromInput = await grabSourcesFromInput(rawInput);

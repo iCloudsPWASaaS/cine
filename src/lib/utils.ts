@@ -79,8 +79,12 @@ export type ProviderKey =
   | "lulustream"
   | "mp4upload"
   | "gdrive"
+  | "movies111"
   | "vidlink"
+  | "vidsrcmov"
   | "vidsrc"
+  | "vidcore"
+  | "vidzen"
   | "autoembed"
   | "multiembed"
   | "twoembed"
@@ -228,13 +232,49 @@ const GATEWAY_PROVIDERS: {
   hostPattern: RegExp;
 }[] = [
   {
+    key: "movies111",
+    name: "111Movies",
+    slug: "movies111",
+    quality: "1080p",
+    priority: 60,
+    baseUrl: "https://111movies.net",
+    hostPattern: /(?:^|\.)111movies\.[a-z0-9.]+$/i,
+  },
+  {
     key: "vidlink",
     name: "VidLink Pro",
     slug: "vidlink",
     quality: "1080p",
-    priority: 27,
+    priority: 59,
     baseUrl: "https://vidlink.pro",
     hostPattern: /(?:^|\.)vidlink\.[a-z0-9.]+$/i,
+  },
+  {
+    key: "vidsrcmov",
+    name: "VidSrc.Mov",
+    slug: "vidsrcmov",
+    quality: "1080p",
+    priority: 58,
+    baseUrl: "https://vidsrc.mov",
+    hostPattern: /(?:^|\.)vidsrc\.mov$/i,
+  },
+  {
+    key: "vidcore",
+    name: "VidCore",
+    slug: "vidcore",
+    quality: "4K",
+    priority: 56,
+    baseUrl: "https://vidcore.io",
+    hostPattern: /(?:^|\.)vidcore\.(?:io|org)$/i,
+  },
+  {
+    key: "vidzen",
+    name: "VidZen",
+    slug: "vidzen",
+    quality: "4K",
+    priority: 55,
+    baseUrl: "https://vidzen.fun",
+    hostPattern: /(?:^|\.)vidzen\.[a-z0-9.]+$/i,
   },
   {
     key: "vidsrc",
@@ -247,10 +287,10 @@ const GATEWAY_PROVIDERS: {
   },
   {
     key: "multiembed",
-    name: "StreamWish",
+    name: "MultiEmbed",
     slug: "streamwish",
     quality: "HD",
-    priority: 25,
+    priority: 57,
     baseUrl: "https://multiembed.mov",
     hostPattern: /(?:^|\.)(multiembed|superembed)\.[a-z0-9.]+$/i,
   },

@@ -51,9 +51,9 @@ export function LatestCarousel({
           alt=""
           priority
           loading="eager"
-          className="h-full w-full object-cover object-top opacity-45 blur-[2px] saturate-[1.25]"
+          className="h-full w-full object-cover object-top opacity-75 brightness-[1.15] blur-[1px] saturate-[1.35]"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-site-bg/60 via-site-bg/85 to-site-bg" />
+        <div className="absolute inset-0 bg-gradient-to-b from-site-bg/35 via-site-bg/65 to-site-bg/95" />
         <div className="absolute inset-0 bg-[radial-gradient(700px_320px_at_50%_0%,rgba(108,92,231,0.16),transparent_70%)]" />
       </div>
 
@@ -90,13 +90,13 @@ export function LatestCarousel({
               loopAdditionalSlides={4}
               initialSlide={initialIndex}
               speed={450}
-              slidesPerView={1.45}
+              slidesPerView={1.7}
               spaceBetween={8}
               breakpoints={{
-                480: { slidesPerView: 2.1, spaceBetween: 10 },
-                640: { slidesPerView: 3, spaceBetween: 12 },
-                1024: { slidesPerView: 4, spaceBetween: 14 },
-                1280: { slidesPerView: 4.8, spaceBetween: 16 },
+                480: { slidesPerView: 2.6, spaceBetween: 10 },
+                640: { slidesPerView: 3.8, spaceBetween: 12 },
+                1024: { slidesPerView: 5.2, spaceBetween: 12 },
+                1280: { slidesPerView: 6.2, spaceBetween: 14 },
               }}
               slideToClickedSlide
               keyboard={{ enabled: true }}

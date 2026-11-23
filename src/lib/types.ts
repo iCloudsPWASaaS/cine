@@ -56,7 +56,41 @@ export interface MovieSubtitle {
   is_active: boolean;
 }
 
+export interface TmdbCollectionRef {
+  id: number;
+  name: string;
+  poster_path?: string | null;
+  backdrop_path?: string | null;
+}
+
+export interface TmdbCollectionPart {
+  id: number;
+  title: string;
+  release_date?: string;
+  poster_path?: string | null;
+  backdrop_path?: string | null;
+  overview?: string;
+}
+
+export interface TmdbCollectionDetails extends TmdbCollectionRef {
+  overview?: string;
+  parts?: TmdbCollectionPart[];
+}
+
+export interface MovieCollection {
+  id: number;
+  slug: string;
+  name: string;
+  count: number;
+  posterUrl: string | null;
+  backdropUrl: string | null;
+  years: string;
+  movies: Movie[];
+}
+
 export interface MovieMetadata {
+  collection?: TmdbCollectionRef | null;
+  collection_checked?: boolean;
   subtitles?: MovieSubtitle[];
   demo?: boolean;
   license?: string;

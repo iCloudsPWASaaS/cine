@@ -24,6 +24,7 @@ import {
 import { SubmitButton } from "@/components/admin/submit-button";
 import { canonicalLanguage, LANGUAGES } from "@/lib/languages";
 import type { MovieSource, MovieSubtitle, Source } from "@/lib/types";
+import { parseSourceEpisode } from "@/lib/utils";
 
 const typeIcon = {
   hls: Tv,
@@ -62,6 +63,35 @@ export function SourceManager({
   registry: Source[];
   subtitles?: MovieSubtitle[];
 }) {
+  const episodeMap = new Map<
+    string,
+    { season: number; episode: number; sources: MovieSource[] }
+  >();
+  for (const source of sources) {
+    const parsed = parseSourceEpisode(source.label);
+    if (!parsed) continue;
+    const group = episodeMap.get(parsed.key) || {
+      season: parsed.season,
+      episode: parsed.episode,
+      sources: [],
+    };
+    group.sources.push(source);
+    episodeMap.set(parsed.key, group);
+  }
+  const episodeGroups = Array.from(episodeMap.values()).sort(
+    (a, b) => a.season - b.season || a.episode - b.episode,
+  );
+  const seasonGroups = Array.from(
+    episodeGroups.reduce((map, group) => {
+      const list = map.get(group.season) || [];
+      list.push(group);
+      map.set(group.season, list);
+      return map;
+    }, new Map<number, typeof episodeGroups>()),
+  )
+    .map(([season, episodes]) => ({ season, episodes }))
+    .sort((a, b) => a.season - b.season);
+
   return (
     <section className="admin-card p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -146,6 +176,46 @@ export function SourceManager({
           automatically.
         </p>
       </form>
+
+      {episodeGroups.length > 0 ? (
+        <div className="mt-4 rounded-2xl border border-violet-500/20 bg-violet-500/[0.05] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.14em] text-violet-200">
+              <Tv size={14} /> Full episode section
+            </h3>
+            <span className="badge text-white/50">
+              {episodeGroups.length} episodes ·{" "}
+              {episodeGroups.reduce((sum, group) => sum + group.sources.length, 0)}{" "}
+              sources
+            </span>
+          </div>
+          <div className="mt-3 space-y-3">
+            {seasonGroups.map((season) => (
+              <div key={season.season}>
+                <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-violet-200/60">
+                  Season {season.season}
+                  <span className="text-violet-200/35">
+                    {season.episodes.length} episodes
+                  </span>
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {season.episodes.map((group) => (
+                    <span
+                      key={`E${group.episode}`}
+                      className="rounded-md border border-violet-400/20 bg-violet-400/[0.08] px-2 py-1 text-[11px] font-bold text-violet-100"
+                    >
+                      E{group.episode}
+                      <span className="ml-1.5 text-[10px] font-medium text-violet-200/50">
+                        {group.sources.length}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <details className="group mt-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
         <summary className="flex cursor-pointer list-none items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white/45 transition hover:text-gold">

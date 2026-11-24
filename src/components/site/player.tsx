@@ -20,7 +20,10 @@ import {
   Subtitles,
   Tv,
 } from "lucide-react";
-import { groupSourcesByLanguage, normalizeLanguage } from "@/lib/languages";
+import {
+  canonicalLanguage,
+  normalizeLanguage,
+} from "@/lib/languages";
 import {
   getResumePosition,
   markWatched,
@@ -34,6 +37,7 @@ import {
   isSandboxIncompatibleHost,
   isSandboxSafeHost,
   normalizeEmbedUrl,
+  parseSourceEpisode,
   upgradeLegacyGatewayUrl,
   withSubtitleParams,
   youtubeEmbed,
@@ -48,6 +52,28 @@ interface PlayerProps {
   sources: MovieSource[];
   subtitles?: MovieSubtitle[];
   autoplay?: boolean;
+}
+
+interface PlayerEpisodeGroup {
+  key: string;
+  season: number;
+  episode: number;
+  sources: MovieSource[];
+}
+
+const AUDIO_LANGUAGES = ["English", "Hindi"] as const;
+
+function matchesAudioLanguage(source: MovieSource, language: string) {
+  if (language === "All") return true;
+  const canonical = canonicalLanguage(source.language);
+  return !canonical || canonical === language;
+}
+
+function rotateSources(sources: MovieSource[], offset: number) {
+  if (sources.length === 0) return sources;
+  const normalized = ((offset % sources.length) + sources.length) % sources.length;
+  if (normalized === 0) return sources;
+  return [...sources.slice(normalized), ...sources.slice(0, normalized)];
 }
 
 function subtitleType(url: string | undefined | null) {
@@ -464,18 +490,77 @@ export function Player({
   subtitles = [],
   autoplay = false,
 }: PlayerProps) {
-  const playable = sources.filter((source) => source.type !== "external");
-  const languageGroups = useMemo(
-    () => groupSourcesByLanguage(sources),
-    [sources],
+  const episodeGroups = useMemo<PlayerEpisodeGroup[]>(() => {
+    const map = new Map<string, PlayerEpisodeGroup>();
+    for (const source of sources) {
+      const parsed = parseSourceEpisode(source.label);
+      if (!parsed) continue;
+      const group = map.get(parsed.key) || {
+        key: parsed.key,
+        season: parsed.season,
+        episode: parsed.episode,
+        sources: [],
+      };
+      group.sources.push(source);
+      map.set(parsed.key, group);
+    }
+    return Array.from(map.values()).sort(
+      (a, b) => a.season - b.season || a.episode - b.episode,
+    );
+  }, [sources]);
+  const seasonGroups = useMemo(() => {
+    const map = new Map<number, PlayerEpisodeGroup[]>();
+    for (const group of episodeGroups) {
+      const list = map.get(group.season) || [];
+      list.push(group);
+      map.set(group.season, list);
+    }
+    return Array.from(map.entries())
+      .map(([season, episodes]) => ({ season, episodes }))
+      .sort((a, b) => a.season - b.season);
+  }, [episodeGroups]);
+  const [activeSeason, setActiveSeason] = useState<number | null>(
+    () => episodeGroups[0]?.season ?? null,
   );
-  const [activeLanguage, setActiveLanguage] = useState<string>("All");
-  const visibleSources =
-    activeLanguage === "All"
-      ? sources
-      : languageGroups.find((group) => group.name === activeLanguage)?.sources ||
-        [];
-  const initialSource = playable[0] || sources[0] || null;
+  const seasonEpisodes =
+    seasonGroups.find((group) => group.season === activeSeason)?.episodes || [];
+  const [activeEpisode, setActiveEpisode] = useState<string>(
+    () => episodeGroups[0]?.key || "All",
+  );
+  const [rotations] = useState<Record<string, number>>({});
+  const episodeIndex = episodeGroups.findIndex(
+    (group) => group.key === activeEpisode,
+  );
+  const episodeOffset =
+    activeEpisode === "All"
+      ? 0
+      : (rotations[activeEpisode] ?? Math.max(0, episodeIndex));
+  const episodeSources = useMemo(() => {
+    if (activeEpisode === "All") return sources;
+    return (
+      episodeGroups.find((group) => group.key === activeEpisode)?.sources ||
+      sources
+    );
+  }, [activeEpisode, episodeGroups, sources]);
+  const rotatedSources = useMemo(
+    () => rotateSources(episodeSources, episodeOffset),
+    [episodeSources, episodeOffset],
+  );
+  const audioOptions = AUDIO_LANGUAGES.filter((language) =>
+    rotatedSources.some((source) => matchesAudioLanguage(source, language)),
+  );
+  const [activeLanguage, setActiveLanguage] = useState<string>(
+    () => audioOptions[0] || "All",
+  );
+  const visibleSources = useMemo(
+    () =>
+      rotatedSources.filter((source) =>
+        matchesAudioLanguage(source, activeLanguage),
+      ),
+    [rotatedSources, activeLanguage],
+  );
+  const playable = visibleSources.filter((source) => source.type !== "external");
+  const initialSource = playable[0] || rotatedSources[0] || null;
   const [activeId, setActiveId] = useState<string | null>(
     initialSource?.id || null,
   );
@@ -512,7 +597,7 @@ export function Player({
   );
   const handleLoading = useCallback(
     (value: boolean) => setLoading(value),
-    [],
+    [setLoading],
   );
   const handleProgress = useCallback(
     (position: number, duration: number) => {
@@ -605,9 +690,9 @@ export function Player({
     subtitles.find((item) => item.id === activeSubtitleId) || null;
 
   const active =
-    sources.find((source) => source.id === activeId) ||
+    rotatedSources.find((source) => source.id === activeId) ||
     playable[0] ||
-    sources[0] ||
+    rotatedSources[0] ||
     null;
 
   const track = () => {
@@ -618,6 +703,31 @@ export function Player({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slug }),
     }).catch(() => undefined);
+  };
+
+  const selectEpisode = (group: PlayerEpisodeGroup) => {
+    const index = episodeGroups.findIndex((item) => item.key === group.key);
+    const audio =
+      AUDIO_LANGUAGES[Math.max(0, index) % AUDIO_LANGUAGES.length] || "All";
+    const offset = rotations[group.key] ?? Math.max(0, index);
+    const rotated = rotateSources(group.sources, offset);
+    const matching = rotated.filter((source) =>
+      matchesAudioLanguage(source, audio),
+    );
+    const next =
+      matching.find((source) => source.type !== "external") ||
+      matching[0] ||
+      rotated.find((source) => source.type !== "external") ||
+      rotated[0];
+    setActiveSeason(group.season);
+    setActiveEpisode(group.key);
+    setActiveLanguage(audio);
+    if (next) {
+      setActiveId(next.id);
+      setLoading(next.type !== "external");
+      markWatched(watchedItem);
+      if (next.type !== "external") track();
+    }
   };
 
   return (
@@ -747,15 +857,55 @@ export function Player({
       </div>
 
       <div className="border-t border-white/[0.07] bg-[#0c0e15] px-4 py-4 sm:px-5">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-white/40">
-            <Tv size={14} className="text-violet-300" />
-            Sources
-            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/60">
-              {sources.length}
+        {seasonGroups.length > 0 ? (
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
+              <Tv size={12} className="text-violet-300" /> Season
             </span>
+            {seasonGroups.map((group) => (
+              <button
+                key={group.season}
+                type="button"
+                onClick={() => {
+                  if (group.episodes[0]) selectEpisode(group.episodes[0]);
+                }}
+                className={cn(
+                  "flix-pill inline-flex items-center gap-1.5 transition hover:text-white",
+                  activeSeason === group.season && "flix-server-btn-active",
+                )}
+              >
+                S{group.season}
+                <span className="text-[10px] opacity-60">
+                  {group.episodes.length}
+                </span>
+              </button>
+            ))}
           </div>
-        </div>
+        ) : null}
+
+        {seasonEpisodes.length > 0 ? (
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
+              <Tv size={12} className="text-violet-300" /> Episode
+            </span>
+            {seasonEpisodes.map((group) => (
+              <button
+                key={group.key}
+                type="button"
+                onClick={() => selectEpisode(group)}
+                className={cn(
+                  "flix-pill inline-flex items-center gap-1.5 transition hover:text-white",
+                  activeEpisode === group.key && "flix-server-btn-active",
+                )}
+              >
+                E{group.episode}
+                <span className="text-[10px] opacity-60">
+                  {group.sources.length}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         {subtitles.length > 0 ? (
           <div className="mb-3 flex flex-wrap items-center gap-1.5">
@@ -778,29 +928,43 @@ export function Player({
           </div>
         ) : null}
 
-        {sources.length > 0 ? (
+        {audioOptions.length > 0 ? (
           <div className="mb-3 flex flex-wrap items-center gap-1.5">
             <span className="mr-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
               <Languages size={12} className="text-violet-300" /> Audio
             </span>
-            {[
-              { name: "All", count: sources.length },
-              ...languageGroups.map((group) => ({
-                name: group.name,
-                count: group.sources.length,
-              })),
-            ].map((group) => (
+            {audioOptions.map((language) => (
               <button
-                key={group.name}
+                key={language}
                 type="button"
-                onClick={() => setActiveLanguage(group.name)}
+                onClick={() => {
+                  setActiveLanguage(language);
+                  const matching = rotatedSources.filter((source) =>
+                    matchesAudioLanguage(source, language),
+                  );
+                  const next =
+                    matching.find((source) => source.type !== "external") ||
+                    matching[0];
+                  if (next) {
+                    setActiveId(next.id);
+                    setLoading(next.type !== "external");
+                    markWatched(watchedItem);
+                    if (next.type !== "external") track();
+                  }
+                }}
                 className={cn(
                   "flix-pill inline-flex items-center gap-1.5 transition hover:text-white",
-                  activeLanguage === group.name && "flix-server-btn-active",
+                  activeLanguage === language && "flix-server-btn-active",
                 )}
               >
-                {group.name}
-                <span className="text-[10px] opacity-60">{group.count}</span>
+                {language}
+                <span className="text-[10px] opacity-60">
+                  {
+                    rotatedSources.filter((source) =>
+                      matchesAudioLanguage(source, language),
+                    ).length
+                  }
+                </span>
               </button>
             ))}
           </div>
@@ -812,12 +976,12 @@ export function Player({
               <button
                 key={source.id}
                 type="button"
-                onClick={() => {
-                  setActiveId(source.id);
-                  setLoading(source.type !== "external");
-                  markWatched(watchedItem);
-                  if (source.type !== "external") track();
-                }}
+                  onClick={() => {
+                    setActiveId(source.id);
+                    setLoading(source.type !== "external");
+                    markWatched(watchedItem);
+                    if (source.type !== "external") track();
+                  }}
                 className={cn(
                   "flix-server-btn group inline-flex items-center gap-2.5",
                   active?.id === source.id && "flix-server-btn-active",

@@ -11,6 +11,7 @@ interface BrowseViewProps {
   forcedType?: "movie" | "series";
   forcedGenre?: string;
   forcedYear?: string;
+  forcedCountry?: string;
   forcedTrending?: boolean;
   actionPath?: string;
   heading?: string;
@@ -28,6 +29,7 @@ export async function BrowseView({
   forcedType,
   forcedGenre,
   forcedYear,
+  forcedCountry,
   forcedTrending,
   actionPath = "/movies",
   heading,
@@ -39,7 +41,7 @@ export async function BrowseView({
   const genre = forcedGenre || param(searchParams.genre);
   const category = param(searchParams.category);
   const year = forcedYear || param(searchParams.year);
-  const country = param(searchParams.country);
+  const country = forcedCountry || param(searchParams.country);
   const upcoming = param(searchParams.upcoming);
   const trending = forcedTrending ? "1" : param(searchParams.trending);
   const sort = param(searchParams.sort) || (q ? "relevance" : "newest");
@@ -77,9 +79,9 @@ export async function BrowseView({
         ? "Trending"
         : activeGenre?.name ||
           (country
-            ? `${country} titles`
+            ? `Movies from ${year ? `${year}/` : ""}${country}`
             : year
-              ? `${year} Movies`
+              ? `Movies from ${year}`
               : currentCategory?.name ||
                 (type === "series"
                   ? "Series"
@@ -108,8 +110,8 @@ export async function BrowseView({
     if (!forcedType && type) params.set("type", type);
     if (!forcedGenre && genre) params.set("genre", genre);
     if (category) params.set("category", category);
-    if (year) params.set("year", year);
-    if (country) params.set("country", country);
+    if (!forcedYear && year) params.set("year", year);
+    if (!forcedCountry && country) params.set("country", country);
     if (upcoming) params.set("upcoming", upcoming);
     if (!forcedTrending && trending) params.set("trending", trending);
     if (sort && sort !== "newest") params.set("sort", sort);
@@ -151,14 +153,14 @@ export async function BrowseView({
       clearHref: buildHref({ category: null, page: null }),
     });
   }
-  if (year) {
+  if (!forcedYear && year) {
     activeFilters.push({
       key: "year",
       label: year,
       clearHref: buildHref({ year: null, page: null }),
     });
   }
-  if (country) {
+  if (!forcedCountry && country) {
     activeFilters.push({
       key: "country",
       label: country,

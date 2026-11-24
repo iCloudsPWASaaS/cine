@@ -243,7 +243,7 @@ export async function addMovieSourceAction(formData: FormData) {
   const detected = detectSourceProvider(rawUrl);
   const url = upgradeLegacyGatewayUrl(detected ? detected.url : rawUrl);
   const rawLanguage = text(formData, "language");
-  const language = canonicalLanguage(rawLanguage) || rawLanguage || null;
+  const language = canonicalLanguage(rawLanguage) || null;
   const rawLabel = text(formData, "label");
   const label =
     rawLabel ||
@@ -467,7 +467,7 @@ export async function setMovieSourceLanguageAction(formData: FormData) {
   const back = movieId ? `/admin/movies/${movieId}` : "/admin/movies";
   if (!id) fail(back, "Missing source id.");
 
-  const language = canonicalLanguage(rawLanguage) || rawLanguage || null;
+  const language = canonicalLanguage(rawLanguage) || null;
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("movie_sources")

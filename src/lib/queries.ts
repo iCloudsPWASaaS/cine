@@ -178,6 +178,61 @@ export async function getMovieCountries(): Promise<string[]> {
     .slice(0, 40);
 }
 
+export async function getMovieYearsWithCounts(): Promise<
+  { year: number; count: number }[]
+> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("movies")
+    .select("release_date")
+    .eq("published", true)
+    .not("release_date", "is", null)
+    .limit(5000);
+
+  const counts = new Map<number, number>();
+  for (const row of data || []) {
+    const year = Number(String(row.release_date).slice(0, 4));
+    if (!Number.isFinite(year) || year < 1900) continue;
+    counts.set(year, (counts.get(year) || 0) + 1);
+  }
+
+  return Array.from(counts, ([year, count]) => ({ year, count }))
+    .sort((a, b) => b.year - a.year)
+    .slice(0, 60);
+}
+
+export async function getMovieCountriesWithCounts(): Promise<
+  { country: string; count: number }[]
+> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("movies")
+    .select("metadata")
+    .eq("published", true)
+    .limit(5000);
+
+  const counts = new Map<string, number>();
+  for (const row of data || []) {
+    const metadata = row.metadata as MovieMetadata;
+    const names = new Set<string>();
+    if (typeof metadata?.country === "string" && metadata.country.trim()) {
+      names.add(metadata.country.trim());
+    }
+    for (const country of metadata?.countries || []) {
+      if (typeof country === "string" && country.trim()) {
+        names.add(country.trim());
+      }
+    }
+    for (const name of names) {
+      counts.set(name, (counts.get(name) || 0) + 1);
+    }
+  }
+
+  return Array.from(counts, ([country, count]) => ({ country, count }))
+    .sort((a, b) => b.count - a.count || a.country.localeCompare(b.country))
+    .slice(0, 60);
+}
+
 export async function getFeatured(limit = 5): Promise<Movie[]> {
   const supabase = createAdminClient();
   const { data } = await supabase

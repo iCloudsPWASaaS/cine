@@ -4,29 +4,15 @@ export interface LanguageOption {
 }
 
 export const LANGUAGES: LanguageOption[] = [
-  { name: "Hindi", aliases: ["hindi", "hin", "hi", "हिंदी", "हिन्दी"] },
   { name: "English", aliases: ["english", "eng", "en"] },
-  { name: "Bengali", aliases: ["bengali", "bangla", "ben", "bn", "বাংলা"] },
-  { name: "Tamil", aliases: ["tamil", "tam", "ta", "தமிழ்"] },
-  { name: "Telugu", aliases: ["telugu", "tel", "te", "తెలుగు"] },
-  { name: "Urdu", aliases: ["urdu", "urd", "ur", "اردو"] },
-  { name: "Arabic", aliases: ["arabic", "ara", "ar", "العربية"] },
-  { name: "Spanish", aliases: ["spanish", "español", "spa", "es"] },
-  { name: "French", aliases: ["french", "français", "fre", "fra", "fr"] },
+  { name: "Hindi", aliases: ["hindi", "hin", "hi", "हिंदी", "हिन्दी"] },
 ];
 
 export const OTHER_LANGUAGE = "Other";
 
 const LANGUAGE_CODES: Record<string, string> = {
-  Hindi: "hi",
   English: "en",
-  Bengali: "bn",
-  Tamil: "ta",
-  Telugu: "te",
-  Urdu: "ur",
-  Arabic: "ar",
-  Spanish: "es",
-  French: "fr",
+  Hindi: "hi",
 };
 
 export function languageCode(value: string | null | undefined): string | null {
@@ -84,7 +70,8 @@ export function groupSourcesByLanguage<T extends { language: string | null }>(
 ): { name: string; sources: T[] }[] {
   const groups = new Map<string, T[]>();
   for (const source of sources) {
-    const name = normalizeLanguage(source.language);
+    const name = canonicalLanguage(source.language);
+    if (!name) continue;
     const list = groups.get(name) || [];
     list.push(source);
     groups.set(name, list);
@@ -95,7 +82,5 @@ export function groupSourcesByLanguage<T extends { language: string | null }>(
     const list = groups.get(language.name);
     if (list?.length) ordered.push({ name: language.name, sources: list });
   }
-  const other = groups.get(OTHER_LANGUAGE);
-  if (other?.length) ordered.push({ name: OTHER_LANGUAGE, sources: other });
   return ordered;
 }

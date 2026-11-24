@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   CalendarDays,
@@ -59,9 +59,10 @@ const links = [
 const browseItems: DropdownItem[] = [
   { label: "Trending", href: "/trending", icon: TrendingUp },
   { label: "Genres", href: "/genres", icon: Layers3 },
+  { label: "Years", href: "/years", icon: CalendarDays },
   { label: "Top Rated", href: "/top-rated", icon: Star },
   { label: "Collections", href: "/collections", icon: Film },
-  { label: "Countries", href: "/country", icon: Globe2 },
+  { label: "Countries", href: "/countries", icon: Globe2 },
   { label: "Networks", href: "/networks", icon: Tv },
   { label: "Now Playing", href: "/now-playing", icon: Play },
   { label: "Upcoming", href: "/upcoming", icon: CalendarDays },
@@ -242,10 +243,17 @@ export function Header({
   catalog,
 }: HeaderProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const routeKey = `${pathname}?${searchParams.toString()}`;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMobileOpen(false), 0);
+    return () => window.clearTimeout(timer);
+  }, [routeKey]);
 
   useEffect(() => {
     const sync = () => setSavedCount(readWatchlist().length);
@@ -458,7 +466,7 @@ export function Header({
               {years.slice(0, 10).map((year) => (
                 <Link
                   key={year}
-                  href={`/movies?year=${year}`}
+                  href={`/year/${year}`}
                   className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1 text-xs text-site-muted"
                 >
                   {year}
@@ -472,7 +480,7 @@ export function Header({
               {countries.slice(0, 10).map((country) => (
                 <Link
                   key={country}
-                  href={`/movies?country=${encodeURIComponent(country)}`}
+                  href={`/country/${encodeURIComponent(country)}`}
                   className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1 text-xs text-site-muted"
                 >
                   {country}

@@ -35,7 +35,14 @@ export interface GrabbedSourceItem {
   providerSlug: string;
   providerName: string;
   baseUrl: string | null;
+  season?: number | null;
+  episode?: number | null;
 }
+
+type EpisodeRef = { season: number; episode: number };
+
+const MAX_EPISODES_PER_SEASON = 200;
+const MAX_EPISODES_TOTAL = 1000;
 
 const IGNORED_IFRAME_HOSTS =
   /(?:googletagmanager|google-analytics|doubleclick|facebook\.com|twitter\.com|instagram\.com|disqus\.com|recaptcha|cloudflare\.com\/cdn-cgi|ads\.|adservice|googlesyndication|histats\.com|llvpn\.com)/i;
@@ -157,6 +164,84 @@ async function resolveMovieTmdbId(
   }
 }
 
+async function getTmdbEpisodeRefs(tmdbId: number): Promise<EpisodeRef[]> {
+  if (!tmdbConfigured()) return [];
+
+  try {
+    const details = await getTmdbDetails("tv", tmdbId);
+    const refs: EpisodeRef[] = [];
+    const seasons = (details.seasons || [])
+      .map((season) => ({
+        season: Number(season.season_number),
+        count: Number(season.episode_count),
+      }))
+      .filter(
+        (season) =>
+          Number.isFinite(season.season) &&
+          season.season > 0 &&
+          Number.isFinite(season.count) &&
+          season.count > 0,
+      )
+      .sort((a, b) => a.season - b.season);
+
+    for (const season of seasons) {
+      const count = Math.min(season.count, MAX_EPISODES_PER_SEASON);
+      for (let episode = 1; episode <= count; episode += 1) {
+        if (refs.length >= MAX_EPISODES_TOTAL) return refs;
+        refs.push({ season: season.season, episode });
+      }
+    }
+
+    if (refs.length === 0) {
+      const total = Math.min(
+        Number(details.number_of_episodes) || 0,
+        MAX_EPISODES_TOTAL,
+      );
+      for (let episode = 1; episode <= total; episode += 1) {
+        refs.push({ season: 1, episode });
+      }
+    }
+
+    return refs;
+  } catch {
+    return [];
+  }
+}
+
+function expandTvSourceToEpisodes(
+  item: GrabbedSourceItem,
+  refs: EpisodeRef[],
+): GrabbedSourceItem[] {
+  if (/\bS\d{1,3}\s*E\d{1,4}\b/i.test(item.label)) return [item];
+
+  const hasPath = /\/1\/1(?=$|[/?#])/.test(item.url);
+  const hasQuery = /([?&])s=1&e=1(?=$|[&#])/.test(item.url);
+  if (!hasPath && !hasQuery) return [item];
+
+  return refs.map((ref) => {
+    let url = item.url;
+    if (hasPath) {
+      url = url.replace(
+        /\/1\/1(?=$|[/?#])/,
+        `/${ref.season}/${ref.episode}`,
+      );
+    }
+    if (hasQuery) {
+      url = url.replace(
+        /([?&])s=1&e=1(?=$|[&#])/,
+        `$1s=${ref.season}&e=${ref.episode}`,
+      );
+    }
+    return {
+      ...item,
+      label: `${item.label} • S${ref.season} E${ref.episode}`,
+      url,
+      season: ref.season,
+      episode: ref.episode,
+    };
+  });
+}
+
 async function buildTopGatewaySources(
   tmdbId: number | null,
   mediaKind: "movie" | "tv",
@@ -164,27 +249,78 @@ async function buildTopGatewaySources(
 ): Promise<GrabbedSourceItem[]> {
   if (!tmdbId) return [];
 
-  const candidates: GrabbedSourceItem[] = TOP_GATEWAY_PROVIDERS.map((provider) => ({
-    label: provider.label,
-    url:
-      mediaKind === "tv"
-        ? provider.tvUrl(tmdbId, 1, 1)
-        : provider.movieUrl(tmdbId),
+  const makeItem = (
+    provider: TopGatewayProvider,
+    url: string,
+    ref?: EpisodeRef,
+    priorityOverride?: number,
+  ): GrabbedSourceItem => ({
+    label: ref
+      ? `${provider.label} • S${ref.season} E${ref.episode}`
+      : provider.label,
+    url,
     type: "embed",
     quality: provider.quality,
     language: null,
-    priority: provider.priority,
+    priority: priorityOverride ?? provider.priority,
     providerSlug: provider.slug,
     providerName: provider.name,
     baseUrl: provider.baseUrl,
-  }));
+    season: ref?.season || null,
+    episode: ref?.episode || null,
+  });
 
-  const verified = await Promise.all(
-    candidates.map(async (item) =>
+  if (mediaKind === "movie") {
+    const candidates = TOP_GATEWAY_PROVIDERS.map((provider) =>
+      makeItem(provider, provider.movieUrl(tmdbId)),
+    );
+    const verified = await Promise.all(
+      candidates.map(async (item) =>
+        (await verifySourcePlayable(item, movieTitle)) ? item : null,
+      ),
+    );
+    return verified.filter((item): item is GrabbedSourceItem => Boolean(item));
+  }
+
+  const refs = await getTmdbEpisodeRefs(tmdbId);
+  const episodeRefs = refs.length > 0 ? refs : [{ season: 1, episode: 1 }];
+  const sample = episodeRefs[0];
+  const samples = TOP_GATEWAY_PROVIDERS.map((provider) =>
+    makeItem(provider, provider.tvUrl(tmdbId, sample.season, sample.episode), sample),
+  );
+  const verifiedSamples = await Promise.all(
+    samples.map(async (item) =>
       (await verifySourcePlayable(item, movieTitle)) ? item : null,
     ),
   );
-  return verified.filter((item): item is GrabbedSourceItem => Boolean(item));
+  const playable = verifiedSamples.filter(
+    (item): item is GrabbedSourceItem => Boolean(item),
+  );
+
+  const providers = playable
+    .map((item) =>
+      TOP_GATEWAY_PROVIDERS.find(
+        (candidate) => candidate.slug === item.providerSlug,
+      ),
+    )
+    .filter((provider): provider is TopGatewayProvider => Boolean(provider));
+  if (providers.length === 0) return [];
+
+  return episodeRefs.flatMap((ref, index) => {
+    const offset = index % providers.length;
+    const rotated = [
+      ...providers.slice(offset),
+      ...providers.slice(0, offset),
+    ];
+    return rotated.map((provider, rank) =>
+      makeItem(
+        provider,
+        provider.tvUrl(tmdbId, ref.season, ref.episode),
+        ref,
+        Math.max(1, provider.priority - rank),
+      ),
+    );
+  });
 }
 
 function resolveUrl(candidate: string, baseUrl?: string): string | null {
@@ -1297,12 +1433,19 @@ export async function autoDiscoverSourcesForMovie(
         null,
     }));
 
+  const episodeRefs =
+    mediaKind === "tv" && tmdbAbs ? await getTmdbEpisodeRefs(tmdbAbs) : [];
+  const expandEpisodes = (items: GrabbedSourceItem[]) =>
+    episodeRefs.length > 0
+      ? items.flatMap((item) => expandTvSourceToEpisodes(item, episodeRefs))
+      : items;
+
   return addLanguageVariants(
     [
-      ...withDetectedLanguage(validArchive),
-      ...withDetectedLanguage(validPrimary),
-      ...withDetectedLanguage(validSecondary),
-      ...withDetectedLanguage(validTemplates),
+      ...expandEpisodes(withDetectedLanguage(validArchive)),
+      ...expandEpisodes(withDetectedLanguage(validPrimary)),
+      ...expandEpisodes(withDetectedLanguage(validSecondary)),
+      ...expandEpisodes(withDetectedLanguage(validTemplates)),
       ...withDetectedLanguage(validTrailers),
     ],
     detectedLanguage,

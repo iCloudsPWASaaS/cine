@@ -650,6 +650,15 @@ export function formatSourceLabel(label: string | null | undefined) {
     .join(" • ");
 }
 
+export function parseSourceEpisode(label: string | null | undefined) {
+  const match = String(label || "").match(/\bS(\d{1,3})\s*E(\d{1,4})\b/i);
+  if (!match) return null;
+  const season = Number(match[1]);
+  const episode = Number(match[2]);
+  if (!Number.isFinite(season) || !Number.isFinite(episode)) return null;
+  return { season, episode, key: `S${season}E${episode}` };
+}
+
 export function withSubtitleParams(
   url: string,
   subtitle?: MovieSubtitle | null,

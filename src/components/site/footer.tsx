@@ -39,7 +39,7 @@ const columns = [
     title: "Discover",
     links: [
       { label: "Genres", href: "/genres" },
-      { label: "Countries", href: "/country" },
+      { label: "Countries", href: "/countries" },
       { label: "Collections", href: "/collections" },
       { label: "My List", href: "/watchlist" },
     ],

@@ -11,7 +11,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { year } = await params;
   return {
-    title: `${year} Movies`,
+    title: `Movies from ${year}`,
     description: `Browse movies released in ${year}.`,
   };
 }
@@ -32,8 +32,9 @@ export default async function YearPage({
       forcedYear={year}
       forcedType="movie"
       actionPath={`/year/${year}`}
-      heading={`${year} Movies`}
-      description={`Every movie in the library released in ${year}.`}
+      heading={`Movies from ${year}`}
+      description={`Browse movies released in ${year}.`}
+      hideFilters
     />
   );
 }

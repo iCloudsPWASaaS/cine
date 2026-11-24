@@ -51,8 +51,8 @@ export default async function NewMoviePage({
         <Flash searchParams={params} />
       </div>
 
-      <section className="admin-card overflow-hidden">
-        <div className="border-b border-white/10 bg-gradient-to-r from-gold/[0.08] via-transparent to-transparent p-5 sm:p-6">
+      <section className="admin-card">
+        <div className="rounded-t-2xl border-b border-white/10 bg-gradient-to-r from-gold/[0.08] via-transparent to-transparent p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="flex items-center gap-2 text-base font-extrabold">

@@ -32,21 +32,38 @@ export async function importMovieByNameAction(formData: FormData) {
     );
   }
 
-  let results: TmdbSearchResult[] = [];
-  try {
-    results = await searchTmdb(query);
-  } catch (error) {
-    fail(
-      error instanceof Error ? error.message : "TMDB search failed.",
-    );
+  const rawTmdbId = Number(formData.get("tmdbId"));
+  const selectedMediaType = String(formData.get("mediaType") || "");
+  let pick: TmdbSearchResult | null = null;
+
+  if (
+    Number.isFinite(rawTmdbId) &&
+    rawTmdbId > 0 &&
+    (selectedMediaType === "movie" || selectedMediaType === "tv")
+  ) {
+    pick = {
+      id: rawTmdbId,
+      media_type: selectedMediaType,
+      title: selectedMediaType === "movie" ? query : undefined,
+      name: selectedMediaType === "tv" ? query : undefined,
+    };
+  } else {
+    let results: TmdbSearchResult[] = [];
+    try {
+      results = await searchTmdb(query);
+    } catch (error) {
+      fail(error instanceof Error ? error.message : "TMDB search failed.");
+    }
+
+    if (results.length === 0) {
+      fail(`No TMDB matches found for "${query}". Try the full title or a year.`);
+    }
+
+    pick = pickTmdbResult(results, query);
+    if (!pick) fail(`No TMDB matches found for "${query}".`);
   }
 
-  if (results.length === 0) {
-    fail(`No TMDB matches found for "${query}". Try the full title or a year.`);
-  }
-
-  const pick = pickTmdbResult(results, query);
-  if (!pick) fail(`No TMDB matches found for "${query}".`);
+  if (!pick) fail(`No TMDB match selected for "${query}".`);
 
   let saved: { id: string; slug: string; title: string } | null = null;
   try {

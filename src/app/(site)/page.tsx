@@ -88,6 +88,8 @@ export default async function HomePage() {
       <LatestCarousel movies={heroMovies} label="Trending" />
 
       <div className="container-page pb-10">
+        <ContinueWatchingRow />
+
         <MovieRow
           title="Trending This Week"
           eyebrow="What everyone is watching"
@@ -106,7 +108,6 @@ export default async function HomePage() {
           accent="orange"
         />
 
-        <ContinueWatchingRow />
         <WatchlistRow />
 
         <SpecialCategorySection categories={specialCategories} />

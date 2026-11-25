@@ -186,6 +186,7 @@ export interface BrowseFilters {
   category?: string;
   year?: string;
   country?: string;
+  cast?: string;
   upcoming?: string;
   trending?: string;
   sort?: string;

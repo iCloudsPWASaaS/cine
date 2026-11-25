@@ -12,6 +12,7 @@ interface BrowseViewProps {
   forcedGenre?: string;
   forcedYear?: string;
   forcedCountry?: string;
+  forcedCast?: string;
   forcedTrending?: boolean;
   actionPath?: string;
   heading?: string;
@@ -30,6 +31,7 @@ export async function BrowseView({
   forcedGenre,
   forcedYear,
   forcedCountry,
+  forcedCast,
   forcedTrending,
   actionPath = "/movies",
   heading,
@@ -42,6 +44,7 @@ export async function BrowseView({
   const category = param(searchParams.category);
   const year = forcedYear || param(searchParams.year);
   const country = forcedCountry || param(searchParams.country);
+  const cast = forcedCast || param(searchParams.cast);
   const upcoming = param(searchParams.upcoming);
   const trending = forcedTrending ? "1" : param(searchParams.trending);
   const sort = param(searchParams.sort) || (q ? "relevance" : "newest");
@@ -55,6 +58,7 @@ export async function BrowseView({
       category,
       year,
       country,
+      cast,
       upcoming,
       trending: trending || undefined,
       sort,
@@ -112,6 +116,7 @@ export async function BrowseView({
     if (category) params.set("category", category);
     if (!forcedYear && year) params.set("year", year);
     if (!forcedCountry && country) params.set("country", country);
+    if (cast) params.set("cast", cast);
     if (upcoming) params.set("upcoming", upcoming);
     if (!forcedTrending && trending) params.set("trending", trending);
     if (sort && sort !== "newest") params.set("sort", sort);
@@ -167,6 +172,13 @@ export async function BrowseView({
       clearHref: buildHref({ country: null, page: null }),
     });
   }
+  if (!forcedCast && cast) {
+    activeFilters.push({
+      key: "cast",
+      label: `Cast: ${cast}`,
+      clearHref: buildHref({ cast: null, page: null }),
+    });
+  }
   if (upcoming === "1") {
     activeFilters.push({
       key: "upcoming",
@@ -199,6 +211,7 @@ export async function BrowseView({
         category: null,
         year: null,
         country: null,
+        cast: null,
         upcoming: null,
         trending: null,
         sort: null,
@@ -210,6 +223,7 @@ export async function BrowseView({
         !category &&
         !year &&
         !country &&
+        !cast &&
         !upcoming &&
         !trending &&
         sort === "newest",

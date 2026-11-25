@@ -236,6 +236,14 @@ body {
   display: none;
 }
 
+.cast-scrollbar {
+  scrollbar-color: #3a4154 #08090d;
+  scrollbar-width: thin;
+}
+.cast-scrollbar::-webkit-scrollbar {
+  height: 8px;
+}
+
 .art-video-player {
   --art-theme: #6c5ce7 !important;
   font-family: var(--font-sans) !important;

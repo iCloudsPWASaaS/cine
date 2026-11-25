@@ -89,7 +89,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
     getSiteSettings(),
   ]);
 
-  const cast = movie.metadata?.cast || [];
+  const cast = (movie.metadata?.cast || []).filter((person) => person.id);
   const rating = formatRating(movie.vote_average);
 
   return (
@@ -291,11 +291,13 @@ export default async function WatchPage({ params }: WatchPageProps) {
           {cast.length > 0 ? (
             <section className="mt-8">
               <h2 className="display text-3xl tracking-[0.04em]">Cast</h2>
-              <div className="hide-scrollbar mt-4 flex gap-3 overflow-x-auto pb-2">
+              <div className="cast-scrollbar mt-4 flex gap-3 overflow-x-auto pb-2">
                 {cast.map((person) => (
-                  <div
+                  <Link
                     key={person.id}
-                    className="w-[105px] shrink-0 rounded-2xl border border-white/10 bg-white/[0.03] p-2"
+                    href={`/actor/${person.id}`}
+                    title={`Movies with ${person.name}`}
+                    className="w-[105px] shrink-0 rounded-2xl border border-white/10 bg-white/[0.03] p-2 transition hover:border-brand/50 hover:bg-brand/10"
                   >
                     <MediaImage
                       src={
@@ -315,7 +317,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
                         {person.character}
                       </p>
                     ) : null}
-                  </div>
+                  </Link>
                 ))}
               </div>
             </section>

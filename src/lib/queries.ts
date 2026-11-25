@@ -447,6 +447,34 @@ export interface BrowseResult {
   perPage: number;
 }
 
+export async function getCastMember(id: number) {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("movies")
+    .select("metadata")
+    .eq("published", true)
+    .contains("metadata", { cast: [{ id }] })
+    .limit(12);
+
+  for (const row of data || []) {
+    const members = (row.metadata?.cast || []) as {
+      id?: number;
+      name?: string;
+      profile_path?: string | null;
+    }[];
+    const person = members.find((member) => Number(member.id) === id);
+    if (person?.name) {
+      return {
+        id,
+        name: person.name as string,
+        profile_path: person.profile_path || null,
+      };
+    }
+  }
+
+  return null;
+}
+
 export async function browseMovies(
   filters: BrowseFilters,
   perPage = 24,
@@ -500,6 +528,23 @@ export async function browseMovies(
         (row) => row.id as string,
       ),
     );
+    if (ids.size === 0) return { movies: [], count: 0, page, perPage };
+    restrictedIds = restrictedIds
+      ? restrictedIds.filter((id) => ids.has(id))
+      : Array.from(ids);
+    if (restrictedIds.length === 0) {
+      return { movies: [], count: 0, page, perPage };
+    }
+  }
+
+  if (filters.cast && /^\d+$/.test(filters.cast)) {
+    const { data: castLinks } = await supabase
+      .from("movies")
+      .select("id")
+      .eq("published", true)
+      .contains("metadata", { cast: [{ id: Number(filters.cast) }] })
+      .limit(5000);
+    const ids = new Set((castLinks || []).map((row) => row.id as string));
     if (ids.size === 0) return { movies: [], count: 0, page, perPage };
     restrictedIds = restrictedIds
       ? restrictedIds.filter((id) => ids.has(id))

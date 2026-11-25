@@ -1,3 +1,4 @@
+import { ADULT_GENRE } from "@/lib/genres";
 import { canonicalLanguage } from "@/lib/languages";
 import { slugify } from "@/lib/utils";
 import { getSiteSettings } from "@/lib/queries";
@@ -91,11 +92,42 @@ async function resolveCategory(
   return first?.id || null;
 }
 
+async function ensureAdultGenre() {
+  const supabase = createAdminClient();
+  const { data: existing } = await supabase
+    .from("genres")
+    .select("id")
+    .eq("slug", ADULT_GENRE.slug)
+    .maybeSingle();
+
+  if (existing) return existing.id as string;
+
+  const { data: created, error } = await supabase
+    .from("genres")
+    .insert({
+      tmdb_id: null,
+      name: ADULT_GENRE.name,
+      slug: ADULT_GENRE.slug,
+    })
+    .select("id")
+    .single();
+
+  if (!error && created) return created.id as string;
+
+  const { data: retry } = await supabase
+    .from("genres")
+    .select("id")
+    .eq("slug", ADULT_GENRE.slug)
+    .maybeSingle();
+  return retry?.id || null;
+}
+
 async function upsertGenres(details: TmdbDetails) {
   const supabase = createAdminClient();
   const ids: string[] = [];
 
   for (const genre of details.genres || []) {
+    if (/adult|18\s*\+/i.test(genre.name)) continue;
     const slug = slugify(genre.name);
     let genreId: string | null = null;
 
@@ -139,6 +171,11 @@ async function upsertGenres(details: TmdbDetails) {
     }
 
     if (genreId) ids.push(genreId);
+  }
+
+  if (details.adult) {
+    const adultGenreId = await ensureAdultGenre();
+    if (adultGenreId) ids.push(adultGenreId);
   }
 
   return Array.from(new Set(ids));

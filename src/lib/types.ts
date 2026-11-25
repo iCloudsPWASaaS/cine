@@ -174,6 +174,7 @@ export interface TmdbSearchResult {
   poster_path?: string | null;
   backdrop_path?: string | null;
   overview?: string;
+  adult?: boolean;
   vote_average?: number;
   popularity?: number;
 }

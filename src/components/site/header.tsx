@@ -29,6 +29,7 @@ import {
   WATCHLIST_EVENT,
   type CatalogItem,
 } from "@/lib/local-library";
+import { ADULT_GENRE } from "@/lib/genres";
 import { isSpecialCategory } from "@/lib/special-categories";
 import type { Category } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -342,6 +343,9 @@ export function Header({
   const regularLinks = categoryLinks.filter(
     (item) => !isSpecialCategory(item.slug),
   );
+  const menuGenres = genres.some((genre) => genre.slug === ADULT_GENRE.slug)
+    ? genres
+    : [{ name: ADULT_GENRE.name, slug: ADULT_GENRE.slug }, ...genres];
 
   return (
     <>
@@ -524,7 +528,7 @@ export function Header({
               Genres
             </p>
             <div className="flex flex-wrap gap-2 px-3 pb-3">
-              {genres.slice(0, 14).map((genre) => (
+              {menuGenres.slice(0, 14).map((genre) => (
                 <Link
                   key={genre.slug}
                   href={`/genre/${genre.slug}`}

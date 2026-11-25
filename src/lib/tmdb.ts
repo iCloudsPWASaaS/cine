@@ -60,6 +60,7 @@ export interface TmdbDetails {
   backdrop_path?: string | null;
   homepage?: string | null;
   original_language?: string;
+  adult?: boolean;
   genres?: TmdbGenre[];
   videos?: { results?: TmdbVideo[] };
   credits?: {
@@ -128,7 +129,7 @@ export async function searchTmdb(query: string): Promise<TmdbSearchResult[]> {
     "/search/multi",
     {
       query: trimmed,
-      include_adult: false,
+      include_adult: true,
       language: "en-US",
       page: 1,
     },

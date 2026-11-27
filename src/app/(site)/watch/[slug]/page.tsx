@@ -111,10 +111,10 @@ export default async function WatchPage({ params }: WatchPageProps) {
           </Link>
           <span>/</span>
           <Link
-            href={movie.type === "series" ? "/tv" : "/movies"}
+            href={movie.type === "series" ? "/series" : "/movies"}
             className="transition hover:text-brand"
           >
-            {movie.type === "series" ? "TV Shows" : "Movies"}
+            {movie.type === "series" ? "TV Series" : "Movies"}
           </Link>
           <span>/</span>
           <span className="max-w-[160px] truncate text-white/60 sm:max-w-[220px]">
@@ -392,11 +392,11 @@ export default async function WatchPage({ params }: WatchPageProps) {
           </div>
 
           <Link
-            href={movie.type === "series" ? "/tv" : "/movies"}
+            href={movie.type === "series" ? "/series" : "/movies"}
             className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-white/40 transition hover:text-brand"
           >
             <ArrowLeft size={14} /> Back to{" "}
-            {movie.type === "series" ? "TV Shows" : "movies"}
+            {movie.type === "series" ? "TV Series" : "movies"}
           </Link>
         </aside>
       </div>

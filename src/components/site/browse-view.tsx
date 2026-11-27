@@ -140,7 +140,7 @@ export async function BrowseView({
   if (!forcedType && type) {
     activeFilters.push({
       key: "type",
-      label: type === "series" ? "TV Shows" : "Movies",
+      label: type === "series" ? "TV Series" : "Movies",
       clearHref: buildHref({ type: null, page: null }),
     });
   }

@@ -8,13 +8,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { MediaImage } from "@/components/site/media-image";
 import type { Movie } from "@/lib/types";
 
-export function LatestCarousel({
-  movies,
-  label = "Now Showing",
-}: {
-  movies: Movie[];
-  label?: string;
-}) {
+export function LatestCarousel({ movies }: { movies: Movie[] }) {
   const router = useRouter();
   const swiperRef = useRef<SwiperInstance | null>(null);
   const slides = movies.slice(0, 15);
@@ -60,9 +54,6 @@ export function LatestCarousel({
       <div className="container-page relative z-10">
         <div className="w-full">
           <div className="min-w-0 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand">
-              {label}
-            </p>
             <h1
               key={active.slug}
               className="animate-fade-up mt-1.5 text-xl font-extrabold leading-tight tracking-tight text-white drop-shadow sm:text-2xl lg:text-3xl"

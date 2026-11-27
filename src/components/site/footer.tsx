@@ -12,7 +12,7 @@ const columns = [
     title: "Browse",
     links: [
       { label: "Movies", href: "/movies" },
-      { label: "TV Shows", href: "/tv" },
+      { label: "TV Series", href: "/series" },
       { label: "Trending", href: "/trending" },
       { label: "Top Rated", href: "/top-rated" },
     ],
@@ -27,9 +27,9 @@ const columns = [
     ],
   },
   {
-    title: "TV Shows",
+    title: "TV Series",
     links: [
-      { label: "Popular", href: "/tv" },
+      { label: "Popular", href: "/series" },
       { label: "Top Rated", href: "/top-rated?type=series" },
       { label: "Airing Today", href: "/airing-today" },
       { label: "Networks", href: "/networks" },

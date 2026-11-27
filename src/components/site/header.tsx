@@ -53,12 +53,8 @@ interface DropdownItem {
 const links = [
   { href: "/", label: "Home" },
   { href: "/movies", label: "Movies" },
+  { href: "/series", label: "TV Series" },
   { href: "/new-releases", label: "New" },
-];
-
-const seriesItems: DropdownItem[] = [
-  { label: "Movies", href: "/movies", icon: Film },
-  { label: "TV Shows", href: "/tv", icon: Tv },
 ];
 
 const browseItems: DropdownItem[] = [
@@ -238,60 +234,6 @@ function BrowseDropdown({ pathname }: { pathname: string }) {
   );
 }
 
-function SeriesDropdown({ pathname }: { pathname: string }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const active = seriesItems.some(
-    (item) => item.href === "/tv" && pathname.startsWith(item.href),
-  );
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (event: MouseEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className={cn(
-          "flex items-center gap-1 px-3 py-2 text-xs font-semibold uppercase tracking-[0.03em] text-site-muted transition hover:text-white",
-          active && "text-white",
-        )}
-        aria-expanded={open}
-      >
-        Series
-        <ChevronDown
-          size={12}
-          className={cn("transition", open && "rotate-180")}
-        />
-      </button>
-      {open ? (
-        <div className="absolute left-1/2 top-full z-50 w-[240px] -translate-x-1/2 rounded-xl border border-white/10 bg-site-panel/98 p-3 shadow-2xl backdrop-blur-xl">
-          <div className="grid gap-1">
-            {seriesItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-site-muted transition hover:bg-white/10 hover:text-white"
-              >
-                <item.icon size={16} className="opacity-70" />
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 export function Header({
   siteName,
   logoText,
@@ -385,7 +327,6 @@ export function Header({
                 </Link>
               );
             })}
-            <SeriesDropdown pathname={pathname} />
             <CategoriesDropdown pathname={pathname} categories={categories} />
             <BrowseDropdown pathname={pathname} />
           </nav>
@@ -458,22 +399,6 @@ export function Header({
                 </Link>
               ))}
             </nav>
-            <p className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.1em] text-site-dim">
-              Series
-            </p>
-            <div className="grid grid-cols-2 gap-1">
-              {seriesItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.03em] text-site-muted transition hover:bg-white/10 hover:text-white"
-                >
-                  <item.icon size={14} className="opacity-70" />
-                  {item.label}
-                </Link>
-              ))}
-            </div>
             <p className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.1em] text-site-dim">
               Categories
             </p>

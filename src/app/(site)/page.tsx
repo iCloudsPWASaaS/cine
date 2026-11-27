@@ -85,7 +85,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <LatestCarousel movies={heroMovies} label="Trending" />
+      <LatestCarousel movies={heroMovies} />
 
       <div className="container-page pb-10">
         <ContinueWatchingRow />
@@ -131,10 +131,10 @@ export default async function HomePage() {
         />
 
         <MovieRow
-          title="Popular TV Shows"
+          title="Popular TV Series"
           eyebrow="Binge-worthy series"
           movies={popularSeries.length > 0 ? popularSeries : fallback}
-          href="/tv"
+          href="/series"
           icon={Tv}
           accent="violet"
         />

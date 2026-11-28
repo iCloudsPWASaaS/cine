@@ -29,7 +29,7 @@ export default async function SiteLayout({
     <div className="flex min-h-screen flex-col">
       <Suspense
         fallback={
-          <div className="h-14 border-b border-white/[0.06] bg-[#0b0b1f]" />
+          <div className="h-14 border-b border-white/[0.06] bg-transparent" />
         }
       >
         <Header

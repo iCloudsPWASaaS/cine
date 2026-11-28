@@ -12,7 +12,7 @@
   --color-mist: #98a1b2;
   --color-brand: #6c5ce7;
   --color-brand-hover: #5a4bd1;
-  --color-site-bg: #1a1a3e;
+  --color-site-bg: #143e52;
   --color-site-panel: #222255;
   --color-site-card: #252352;
   --color-site-muted: #a0a0c0;
@@ -33,7 +33,11 @@ html {
 
 body {
   margin: 0;
-  background: var(--color-site-bg);
+  background-color: var(--color-site-bg);
+  background-image: url("/bg-texture.jpeg");
+  background-position: center top;
+  background-size: cover;
+  background-repeat: no-repeat;
   color: #e8e8f0;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;

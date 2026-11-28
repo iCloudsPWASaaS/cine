@@ -291,7 +291,7 @@ export function Header({
 
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.06] bg-[#141432]/95 backdrop-blur-xl">
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.06] bg-transparent">
         <div className="mx-auto flex h-14 w-full max-w-[1320px] items-center justify-between gap-4 px-4">
           <Link
             href="/"
@@ -386,7 +386,7 @@ export function Header({
         </div>
 
         {mobileOpen ? (
-          <div className="max-h-[calc(100vh-3.5rem)] overflow-y-auto border-t border-white/[0.06] bg-[#141432]/98 px-4 py-3 md:hidden">
+          <div className="max-h-[calc(100vh-3.5rem)] overflow-y-auto border-t border-white/[0.06] bg-transparent px-4 py-3 backdrop-blur-xl md:hidden">
             <nav className="grid grid-cols-2 gap-1">
               {links.map((link) => (
                 <Link

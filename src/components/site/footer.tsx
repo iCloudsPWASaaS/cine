@@ -48,7 +48,7 @@ const columns = [
 
 export function Footer({ settings, genres }: FooterProps) {
   return (
-    <footer className="border-t border-white/[0.06] bg-site-panel">
+    <footer className="border-t border-white/[0.06] bg-[#103242]">
       <div className="mx-auto w-full max-w-[1320px] px-4 py-10 sm:px-6">
         <div className="grid gap-8 md:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div className="max-w-[320px]">
